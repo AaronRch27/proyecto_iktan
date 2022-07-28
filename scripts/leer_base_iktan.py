@@ -26,4 +26,33 @@ for col in lista_col:
     c += 1
 df = pd.DataFrame(frame)
 
-    
+#comienzo del tratamiento a los datos del df
+valores = [f'Aclaración de información (Revisión ROCE) ({x})' for x in range(1,10)]
+ndf = df[df.Estatus.isin(valores)] #nuevo frame filtrado con la variable de interes Estatus
+ndf['num_rev'] = ndf.apply(lambda fila: fila.Estatus[-2],axis=1)
+ndf['contador'] = [1 for i in range(ndf.shape[0])]    
+mas_solicitudes = ndf.groupby(by=['Folio']).sum()
+filtro = mas_solicitudes['contador'] > 3
+ms = mas_solicitudes[filtro]
+indexms = list(ms.index)
+ncon = list(ms['contador'])
+respuesta = {'Folio':indexms,
+             'Entidad':[],
+             'Usuario':[],
+             'Perfil':[],
+             'Numero_consultas':ncon}
+#llenar dataframe de respuesta
+for folio in indexms:
+    #iterr en fils de dataframe
+    c = 0
+    for fila in df['Folio']:
+        if fila == folio:
+            respuesta['Entidad'].append(df['Entidad'][c])
+            respuesta['Usuario'].append(df['Usuario'][c])
+            respuesta['Perfil'].append(df['Perfil'][c])
+            break
+        c += 1
+
+#generar archivo de respuesta con quienes han hecho más solucitudes(arriba de 3)
+rt = pd.DataFrame(respuesta)
+rt.to_csv('Mas_revisiones.csv',index=False,encoding='latin1')

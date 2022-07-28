@@ -1,0 +1,4 @@
+formato interno se hace a artir de reporte descargado
+luego siguetrackin que es la presnetacion del formato digerible para sharepoint
+
+ver eñ estatus para hacer una fila de labores de revision dentro de oc, en columna estatus
