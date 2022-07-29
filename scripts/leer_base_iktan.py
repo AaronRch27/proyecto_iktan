@@ -56,7 +56,7 @@ for folio in indexms:
 
 #generar archivo de respuesta con quienes han hecho más solucitudes(arriba de 3)
 rt = pd.DataFrame(respuesta)
-rt.to_csv('Mas_revisiones.csv',index=False,encoding='latin1')
+rt.to_csv('Mas_Aclaración_de_información_(Revisión_ROCE).csv',index=False,encoding='latin1')
 
 
 
@@ -67,7 +67,11 @@ test['cont'] = [i for i in range(df.shape[0])]
 testix = test.groupby(['Folio'])['cont'].transform(max) == test['cont']
 ntest = test[testix]
 
-ntest = ntest[ntest.Estatus.isin(valores1)]
+ntest = ntest[ntest.Estatus.isin(valores1)] #aquí ya está el dataframe con los que tienen estatus de OC y no otro nuevo
+#ya solo resta ordenarlo por fechas de llegada para su revision
+ntest['Fecha'] =  pd.to_datetime(ntest['Registro'],format="%d/%m/%Y %H:%M:%S")
+ntest = ntest.sort_values(by=['Fecha'])
+ntest.to_csv('Orden_de_atencion_por_fecha_de_llegada.csv')
 
 
 #generar lista de fechas con pendientes
