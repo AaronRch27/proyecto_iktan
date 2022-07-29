@@ -28,8 +28,9 @@ df = pd.DataFrame(frame)
 
 #comienzo del tratamiento a los datos del df
 valores = [f'Aclaración de información (Revisión ROCE) ({x})' for x in range(1,10)]
-ndf = df[df.Estatus.isin(valores)] #nuevo frame filtrado con la variable de interes Estatus
-ndf['num_rev'] = ndf.apply(lambda fila: fila.Estatus[-2],axis=1)
+ndf1 = df[df.Estatus.isin(valores)] #nuevo frame filtrado con la variable de interes Estatus
+ndf = ndf1.copy()
+# ndf['num_rev'] = ndf.apply(lambda fila: fila.Estatus[-2],axis=1)
 ndf['contador'] = [1 for i in range(ndf.shape[0])]    
 mas_solicitudes = ndf.groupby(by=['Folio']).sum()
 filtro = mas_solicitudes['contador'] > 3
@@ -56,3 +57,53 @@ for folio in indexms:
 #generar archivo de respuesta con quienes han hecho más solucitudes(arriba de 3)
 rt = pd.DataFrame(respuesta)
 rt.to_csv('Mas_revisiones.csv',index=False,encoding='latin1')
+
+
+
+#otro enfoque
+test = df.copy()
+valores1 = [f'Revisión OC ({x})' for x in range(1,10)]
+test['cont'] = [i for i in range(df.shape[0])]
+testix = test.groupby(['Folio'])['cont'].transform(max) == test['cont']
+ntest = test[testix]
+
+ntest = ntest[ntest.Estatus.isin(valores1)]
+
+
+#generar lista de fechas con pendientes
+# valores1 = [f'Revisión OC ({x})' for x in range(1,10)]
+# mdf = df[df.Estatus.isin(valores1)]
+# # mdf['Registro'] = mdf['Registro'].map({'vacio':'01/01/2022 00:00:00'})
+# mdf['Fecha'] = pd.to_datetime(mdf['Registro'],format="%d/%m/%Y %H:%M:%S")
+# fe_ord = mdf.sort_values(by=['Fecha'])
+# fe_ord['cont'] = [i for i in range(fe_ord.shape[0])]
+# foldx = fe_ord.groupby(['Folio'])['cont'].transform(max) == fe_ord['cont']
+# folios = fe_ord[foldx] #dataframe con un solo valor de folio, el que tiene la fecha más actual de revision de oc
+# folios = folios.reset_index(drop=True)
+# folios_in  = list(folios['Folio'])
+# #conseguir el mismo dataframe de folios, pero con todos los tipos de estatus para comparar las fechas posteriormente
+# #por problema para traducir fechas, se hace el referente con el contador de dias, bajo la lógica de que si ese contador es mayor, es porque ya cambió de estatus
+# folios_out = []
+# c = 0
+# for folio in folios_in:
+#     c1 = 0
+#     for fol in df['Folio']:
+#         if fol == folio:
+#             if pd.to_datetime(df['Registro'][c1]) > folios['Fecha'][c]:
+#                 folios_out.append(fol)
+#                 break
+#         c1 += 1
+#     c += 1
+
+# #borrar folios que ya tienen otro estatus 
+# for folio in folios_out:
+#     if folio in folios_in:
+#         folios_in.remove(folio)
+        
+# foliosdf = df[df.Folio.isin(folios_in)]
+# foliosdf['fecha'] = pd.to_datetime(foliosdf['Registro'],format="%d/%m/%Y %H:%M:%S")
+# foliosdf = foliosdf.sort_values(by=['fecha'])
+# #va nuevo filtro a partir de fechas
+# foliosdf['cont'] = [i for i in range(foliosdf.shape[0])]
+# idx = foliosdf.groupby(['Folio'])['cont'].transform(max) == foliosdf['cont']
+# foliosdf = foliosdf[idx]
