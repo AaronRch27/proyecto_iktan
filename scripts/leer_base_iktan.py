@@ -26,6 +26,41 @@ for col in lista_col:
     c += 1
 df = pd.DataFrame(frame)
 
+
+#crear vairiables de identificación
+proyectos = {'1':'CNGE','2':'CNSPE','3':'CNSIPEE',
+             '4':'CNPJE','5':'CNIJE',
+             '6':'CNPLE','7':'CNDHE',
+             '8':'CNTAIPPDPE','a':'vacio'}
+
+region = {'centro':[9],
+          'centro_norte':[1,11,22,24],
+          'centro_sur':[12,15,17],
+          'noreste':[5,19,28],
+          'noroeste':[2,3,25,26],
+          'norte':[8,10,32],
+          'occidente':[6,14,16,18],
+          'oriente':[13,21,29,30],
+          'sur':[7,20,27],
+          'sureste':[4,23,31]}
+
+df.insert(1,'Proyecto',[proyectos[x[-4]] for x in df['Folio']],allow_duplicates=False)
+df.insert(2,'Módulo',[x[-4:] for x in df['Folio']],allow_duplicates=False)
+df.insert(3,'Num_Entidad',[x[:-4] for x in df['Folio']],allow_duplicates=False)
+
+reg = []
+for val in df['Num_Entidad']:
+    for k in region:
+        try:
+            if int(val) in region[k]:
+                reg.append(k)
+                break
+        except:
+            reg.append('vacio')
+            break
+df.insert(4,'Región',reg,allow_duplicates=False)
+
+
 #comienzo del tratamiento a los datos del df
 valores = [f'Aclaración de información (Revisión ROCE) ({x})' for x in range(1,10)]
 ndf1 = df[df.Estatus.isin(valores)] #nuevo frame filtrado con la variable de interes Estatus
@@ -38,9 +73,12 @@ ms = mas_solicitudes[filtro]
 indexms = list(ms.index)
 ncon = list(ms['contador'])
 respuesta = {'Folio':indexms,
-             'Entidad':[],
-             'Usuario':[],
-             'Perfil':[],
+             'Proyecto': [],
+             'Módulo': [],
+             'Entidad': [],
+             'Región': [],
+             'Usuario': [],
+             'Perfil': [],
              'Numero_consultas':ncon}
 #llenar dataframe de respuesta
 for folio in indexms:
@@ -51,6 +89,9 @@ for folio in indexms:
             respuesta['Entidad'].append(df['Entidad'][c])
             respuesta['Usuario'].append(df['Usuario'][c])
             respuesta['Perfil'].append(df['Perfil'][c])
+            respuesta['Módulo'].append(df['Módulo'][c])
+            respuesta['Proyecto'].append(df['Proyecto'][c])
+            respuesta['Región'].append(df['Región'][c])
             break
         c += 1
 
@@ -59,22 +100,7 @@ rt = pd.DataFrame(respuesta)
 rt.to_csv('Mas_Aclaracion_de_información_(Revision_ROCE).csv',index=False,encoding='latin1')
 
 
-#crear vairiables de identificación
-proyectos = {'1':'CNGE','2':'CNSPE','3':'CNSIPEE',
-             '4':'CNPJE','5':'CNIJE',
-             '6':'CNPLE','7':'CNDHE',
-             '8':'CNTAIPPDPE'}
 
-region = {'centro':[9],
-          'centro_norte':[1,11,22,24],
-          'centro_sur':[12,15,17],
-          'noreste':[5,19,28],
-          'noroeste':[2,3,25,26],
-          'norte':[8,10,32],
-          'occidente':[6,14,16,18],
-          'oriente':[13,21,29,30],
-          'sur':[7,20,27],
-          'sureste':[4,23,31]}
 #otro enfoque
 test = df.copy()
 valores1 = [f'Revisión OC ({x})' for x in range(1,10)]
@@ -88,16 +114,8 @@ ntest = ntest[ntest.Estatus.isin(valores1)] #aquí ya está el dataframe con los
 #ya solo resta ordenarlo por fechas de llegada para su revision
 ntest['Fecha'] =  pd.to_datetime(ntest['Registro'],format="%d/%m/%Y %H:%M:%S")
 ntest = ntest.sort_values(by=['Fecha'])
-ntest.insert(0,'Proyecto',[proyectos[x[-4]] for x in ntest['Folio']],allow_duplicates=False)
-ntest.insert(1,'Módulo',[x[-4:] for x in ntest['Folio']],allow_duplicates=False)
-ntest.insert(2,'Num_Entidad',[x[:-4] for x in ntest['Folio']],allow_duplicates=False)
-reg = []
-for val in ntest['Num_Entidad']:
-    for k in region:
-        if int(val) in region[k]:
-            reg.append(k)
-            break
-ntest.insert(3,'Región',reg,allow_duplicates=False)
+
+
 ntest.to_csv('Orden_de_atencion_por_fecha_de_llegada.csv',index=False,encoding='utf-8-sig')
 
 
