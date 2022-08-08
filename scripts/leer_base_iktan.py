@@ -101,7 +101,7 @@ rt.to_csv('Mas_Aclaracion_de_información_(Revision_ROCE).csv',index=False,encod
 
 
 
-#otro enfoque
+#generar orden de atención
 test = df.copy()
 valores1 = [f'Revisión OC ({x})' for x in range(1,10)]
 v1c = [f'Aclaración de información OC ({x})' for x in range(1,10)]
@@ -119,40 +119,83 @@ ntest = ntest.sort_values(by=['Fecha'])
 ntest.to_csv('Orden_de_atencion_por_fecha_de_llegada.csv',index=False,encoding='utf-8-sig')
 
 
-#generar lista de fechas con pendientes
-# valores1 = [f'Revisión OC ({x})' for x in range(1,10)]
-# mdf = df[df.Estatus.isin(valores1)]
-# # mdf['Registro'] = mdf['Registro'].map({'vacio':'01/01/2022 00:00:00'})
-# mdf['Fecha'] = pd.to_datetime(mdf['Registro'],format="%d/%m/%Y %H:%M:%S")
-# fe_ord = mdf.sort_values(by=['Fecha'])
-# fe_ord['cont'] = [i for i in range(fe_ord.shape[0])]
-# foldx = fe_ord.groupby(['Folio'])['cont'].transform(max) == fe_ord['cont']
-# folios = fe_ord[foldx] #dataframe con un solo valor de folio, el que tiene la fecha más actual de revision de oc
-# folios = folios.reset_index(drop=True)
-# folios_in  = list(folios['Folio'])
-# #conseguir el mismo dataframe de folios, pero con todos los tipos de estatus para comparar las fechas posteriormente
-# #por problema para traducir fechas, se hace el referente con el contador de dias, bajo la lógica de que si ese contador es mayor, es porque ya cambió de estatus
-# folios_out = []
-# c = 0
-# for folio in folios_in:
-#     c1 = 0
-#     for fol in df['Folio']:
-#         if fol == folio:
-#             if pd.to_datetime(df['Registro'][c1]) > folios['Fecha'][c]:
-#                 folios_out.append(fol)
-#                 break
-#         c1 += 1
-#     c += 1
+#generar historial de atención
+#hacer nombres para nuevas columnas
+revOC = [f'Revisión OC ({x})' for x in range(1,10)]
+acOC = v1c
+acROCEdOC = [f'Aclaración ROCE derivado de OC ({x})' for x in range(1,10)]
+rROCEdOC = [f'Revisión ROCE derivado de OC ({x})' for x in range(1,10)]
+firma = [f'En proceso de firma y sello ({x})' for x in range(1,10)]
+nombres_col = []#aquí los nomnbres de las nuevas columnas para el frame
+c = 0
+for nombre in revOC:
+    to = [nombre,acOC[c],acROCEdOC[c],rROCEdOC[c],firma[c]]
+    for v in to:
+        nombres_col.append(v)
+    c += 1
+#variable con estructura para nuevo dataframe
+estructura = {'Folio':[],
+             'Proyecto': [],
+             'Módulo': [],
+             'Entidad': [],
+             'Región': [],
+             'Rev_OC?': [],
+             'Recuperado_firma_y_sello?': [],
+             'Días_RevOC-último_estatus': []
+             }
+#sumarle los nombres de las otras columnas
+for val in nombres_col:
+    estructura[val] = []
 
-# #borrar folios que ya tienen otro estatus 
-# for folio in folios_out:
-#     if folio in folios_in:
-#         folios_in.remove(folio)
+#generar los datos para el frame
+
+folios_unicos = list(df['Folio'].unique())
+c1 = 0
+for folio in folios_unicos:
+    # filtrar frame por cada folio
+    trabajar = df.loc[df['Folio']==folio]
+    trabajar.reset_index(drop=True)
+    for col in trabajar:
+        if col in estructura:
+            # print(col,trabajar.shape)
+            estructura[col].append(list(trabajar[col])[0])
+    #nuevo dic para evitar duplicados
+    uctu = {}
+    for val in nombres_col:
+        uctu[val] = 'NA'
+    fys = 'No'
+    OC = 'No'
+    c = 0
+    for val in trabajar['Estatus']:
+        if val in uctu:
+            ultimo = pd.to_datetime(list(trabajar['Registro'])[c],format="%d/%m/%Y %H:%M:%S")
+            uctu[val] = ultimo
+        if 'Recuperado con firma y sello' in val:
+            fys = 'Sí'
+        if 'Revisión OC' in val:
+            OC = 'Sí'
         
-# foliosdf = df[df.Folio.isin(folios_in)]
-# foliosdf['fecha'] = pd.to_datetime(foliosdf['Registro'],format="%d/%m/%Y %H:%M:%S")
-# foliosdf = foliosdf.sort_values(by=['fecha'])
-# #va nuevo filtro a partir de fechas
-# foliosdf['cont'] = [i for i in range(foliosdf.shape[0])]
-# idx = foliosdf.groupby(['Folio'])['cont'].transform(max) == foliosdf['cont']
-# foliosdf = foliosdf[idx]
+        c += 1
+    estructura['Recuperado_firma_y_sello?'].append(fys)
+    estructura['Rev_OC?'].append(OC)
+    #calcular los días desde primera revision OC hasta su último estatus de revision
+    if OC == 'Sí':
+        # inicio = estructura['Revisión OC (1)'][c1]
+        inicio = uctu['Revisión OC (1)']
+        dias = (ultimo-inicio).days
+        estructura['Días_RevOC-último_estatus'].append(dias)
+    if OC == 'No':
+        estructura['Días_RevOC-último_estatus'].append('No aplica')
+    #llenar el resto de columnas para la fila que quedaorn en blanco
+    # refe = len(estructura['Folio'])
+    # for k in estructura:
+    #     if len(estructura[k]) < refe:
+    #         estructura[k].append('NA')
+    for k in uctu:
+        estructura[k].append(uctu[k])
+            
+    c1 += 1
+historial = pd.DataFrame(estructura)
+historial.to_csv('Historial_de_revision_OC.csv',index=False,encoding='utf-8-sig')
+    
+    
