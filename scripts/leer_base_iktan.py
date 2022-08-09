@@ -6,6 +6,7 @@ Created on Wed Jul 27 17:35:44 2022
 """
 
 import pandas as pd
+import matplotlib.pyplot as plt
 
 #leer archivo descargado de iktan
 
@@ -114,9 +115,27 @@ ntest = ntest[ntest.Estatus.isin(valores1)] #aquí ya está el dataframe con los
 #ya solo resta ordenarlo por fechas de llegada para su revision
 ntest['Fecha'] =  pd.to_datetime(ntest['Registro'],format="%d/%m/%Y %H:%M:%S")
 ntest = ntest.sort_values(by=['Fecha'])
-
-
+#borrar columnas
+del ntest['Observación']
+del ntest['Contador de días']
+del ntest['cont']
+del ntest['Fecha']
+#guardar archivo
 ntest.to_csv('Orden_de_atencion_por_fecha_de_llegada.csv',index=False,encoding='utf-8-sig')
+#generar tabla en imagen
+tabla = ntest.iloc[:,[1,2,5,8,9]]
+fig, ax =plt.subplots(1,1)
+# ax.axis('tight')
+ax.axis('off')
+ax.table(cellText=tabla.values,
+         colLabels=tabla.columns,
+         loc="center"
+         )
+plt.savefig('prueba.png',dpi=200,
+            bbox_inches='tight')
+plt.show()
+
+
 
 
 #generar historial de atención
