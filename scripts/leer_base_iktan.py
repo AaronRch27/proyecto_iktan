@@ -8,6 +8,7 @@ Created on Wed Jul 27 17:35:44 2022
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
 #leer archivo descargado de iktan
 
 documento = pd.read_excel('xIktan_20220727034229952_reporteSegumiento.xlsx')
@@ -98,7 +99,10 @@ for folio in indexms:
 
 #generar archivo de respuesta con quienes han hecho más solucitudes(arriba de 3)
 rt = pd.DataFrame(respuesta)
-rt.to_csv('Mas_Aclaracion_de_información_(Revision_ROCE).csv',index=False,encoding='latin1')
+# rt.to_csv('Mas_Aclaracion_de_información_(Revision_ROCE).csv',index=False,encoding='latin1')
+# with pd.ExcelWriter('analisis_seguimiento.xlsx',
+#                     mode='a') as writer:  
+#     rt.to_excel(writer, sheet_name='Revision_ROCE')
 
 
 
@@ -121,7 +125,11 @@ del ntest['Contador de días']
 del ntest['cont']
 del ntest['Fecha']
 #guardar archivo
-ntest.to_csv('Orden_de_atencion_por_fecha_de_llegada.csv',index=False,encoding='utf-8-sig')
+# ntest.to_csv('Orden_de_atencion_por_fecha_de_llegada.csv',index=False,encoding='utf-8-sig')
+# with pd.ExcelWriter('analisis_seguimiento.xlsx',
+#                     mode='a') as writer:  
+#     ntest.to_excel(writer, sheet_name='Orden_atencion')
+
 #generar tabla en imagen
 tabla = ntest.iloc[:,[1,2,5,8,9]]
 fig, ax =plt.subplots(1,1)
@@ -215,6 +223,10 @@ for folio in folios_unicos:
             
     c1 += 1
 historial = pd.DataFrame(estructura)
-historial.to_csv('Historial_de_revision_OC.csv',index=False,encoding='utf-8-sig')
+# historial.to_csv('Historial_de_revision_OC.csv',index=False,encoding='utf-8-sig')
+with pd.ExcelWriter('analisis_seguimiento.xlsx') as writer:  
+    rt.to_excel(writer, sheet_name='Revision_ROCE',index=False)
+    ntest.to_excel(writer, sheet_name='Orden_atencion',index=False)
+    historial.to_excel(writer, sheet_name='historial',index=False)  
     
     
