@@ -6,7 +6,7 @@ Created on Wed Jul 27 17:35:44 2022
 """
 
 import pandas as pd
-import matplotlib.pyplot as plt
+
 
 
 #leer archivo descargado de iktan
@@ -45,11 +45,44 @@ region = {'centro':[9],
           'oriente':[13,21,29,30],
           'sur':[7,20,27],
           'sureste':[4,23,31]}
+#variable con los equipos de trabajo para identificar 
+equipos = { 
+    'Operación Estratégica': ['LILIANA AVILA LOPEZ',
+      'VERONICA ITZEL JIMENEZ GONZALEZ',
+      'MARIANA RIOS MARTINEZ',
+      'DANIEL LOPEZ SANCHEZ'],
+    'Integración de Información': ['NALLELY BECERRIL DAVILA',
+     'ROGELIO ROSALES MORALES',
+     'JOSE MANUEL OCOMATL OLAYA',
+     'HUGO GONZALEZ VALDEZ',
+     'RUBI SAMANTHA MEDRANO MARTINEZ',
+     'JOSE ANTONIO CHAVEZ CASTILLO',
+     'VICTOR RAMIRO ESPINA CASAS',
+     'ANA AGLAE FLORES AGUILAR'],
+    'Control y Logística': ['ALEXEI PRADEL HERNANDEZ',
+     'MA. GUADALUPE ADAME SALGADO',
+     'KARLA FABIOLA ACEVEDO BERNARDINO',
+     'ANTONIO ROMERO LEYVA',
+     'YOLISMA LOPEZ CERON',
+     'DIANA LETICIA ALCALA GONZALEZ']
+    }
 
+equip =[]
+
+for usuario in df['Usuario']:
+    if usuario in equipos['Operación Estratégica']:
+        equip.append('Operación Estratégica')
+    if usuario in equipos['Integración de Información']:
+        equip.append('Integración de Información')
+    if usuario in equipos['Control y Logística']:
+        equip.append('Control y Logística')
+    if usuario not in equipos['Operación Estratégica'] and usuario not in equipos['Integración de Información'] and usuario not in equipos['Control y Logística']:
+        equip.append('Sin equipo asignado a revisión') 
+        
 df.insert(1,'Proyecto',[proyectos[x[-4]] for x in df['Folio']],allow_duplicates=False)
 df.insert(2,'Módulo',[x[-4:] for x in df['Folio']],allow_duplicates=False)
 df.insert(3,'Num_Entidad',[x[:-4] for x in df['Folio']],allow_duplicates=False)
-
+df.insert(4,'Equipo',equip)
 reg = []
 for val in df['Num_Entidad']:
     for k in region:
@@ -130,20 +163,6 @@ del ntest['Fecha']
 #                     mode='a') as writer:  
 #     ntest.to_excel(writer, sheet_name='Orden_atencion')
 
-#generar tabla en imagen
-tabla = ntest.iloc[:,[1,2,5,8,9]]
-fig, ax =plt.subplots(1,1)
-# ax.axis('tight')
-ax.axis('off')
-ax.table(cellText=tabla.values,
-         colLabels=tabla.columns,
-         loc="center"
-         )
-plt.savefig('prueba.png',dpi=200,
-            bbox_inches='tight')
-plt.show()
-
-
 
 
 #generar historial de atención
@@ -166,6 +185,7 @@ estructura = {'Folio':[],
              'Módulo': [],
              'Entidad': [],
              'Región': [],
+             'Equipo': [],
              'Rev_OC?': [],
              'Recuperado_firma_y_sello?': [],
              'Días_RevOC-último_estatus': []
