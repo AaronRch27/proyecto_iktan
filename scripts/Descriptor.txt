@@ -1,0 +1,27 @@
+Este documento contiene la descripción de variables generadas con algortimo para facilitar su lectura y/o
+actualización.
+
+
+'Rev_OC?': Puede tener dos valores; 'Sí' o 'No'. Esta variable indica si el folio (cuestionario) ya llegó
+al estatus de revisión por parte de oficinas centrales.
+
+'Dias_inicio_RevOC': Esta variable contiene números negtivos y positivos. También puede contener un mensaje de 
+error si hubo algún problema con la lectura de la fecha. Indica el número de días que faltan para la fecha de inicio
+de revisión dle cuestionario en oficinas centrales que se indicó en el cronograma. Los números positivos señalan días
+faltantes para esa fecha, y los números negativos indican la cantidad de días de retraso que tiene el cuesitonario en
+ser registrado con el estatus para su revisión en OC.
+[En caso de actualizar cronograma, actualizar variable "f_corte" del algortimo con las nuevas fechas]
+
+'Recuperado_firma_y_sello?': La variable contiene dos tipos de valores; 'Sí' o 'No'. Indica si el cuestionario ya concluyó
+con la fase de revisión de oficinas centrales, toman en cuenta el registro de estatus Recuperado con firma y sello.
+
+'Dias_fin_Recfirma': Variable numérica que puede ocntener un mensaje de error si hubo problema con la lectura de fecha de
+registro. Indica los días que faltan o que ya pasaron luego de la fecha de término registrada en el cronograma para llegar
+al estatus de Recuperado con firma y sello (mismo que señala la conclusión de revisión por parte de oficinas centrales).
+Números positivos señalan los días faltantes (es decir, lo cuestionarios que todavía están en tiempo), mientras que números
+negativos son los días de retraso. Es importante señalar que la fecha de corte, es personalizada por cada proyecto.
+[En caso de actualizar cronograma, actualizar variable "f_corte" del algortimo con las nuevas fechas]
+
+
+'Días_RevOC-último_estatus': Variable numércia. Contiene un conteo de los días que han pasado para cada cuestionario
+desde que registraron el estatus de Revisión OC (1) y hasta el último estátus que tengan regitrado. 

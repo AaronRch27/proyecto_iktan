@@ -46,43 +46,56 @@ region = {'centro':[9],
           'sur':[7,20,27],
           'sureste':[4,23,31]}
 #variable con los equipos de trabajo para identificar 
-equipos = { 
-    'Operación Estratégica': ['LILIANA AVILA LOPEZ',
-      'VERONICA ITZEL JIMENEZ GONZALEZ',
-      'MARIANA RIOS MARTINEZ',
-      'DANIEL LOPEZ SANCHEZ'],
-    'Integración de Información': ['NALLELY BECERRIL DAVILA',
-     'ROGELIO ROSALES MORALES',
-     'JOSE MANUEL OCOMATL OLAYA',
-     'HUGO GONZALEZ VALDEZ',
-     'RUBI SAMANTHA MEDRANO MARTINEZ',
-     'JOSE ANTONIO CHAVEZ CASTILLO',
-     'VICTOR RAMIRO ESPINA CASAS',
-     'ANA AGLAE FLORES AGUILAR'],
-    'Control y Logística': ['ALEXEI PRADEL HERNANDEZ',
-     'MA. GUADALUPE ADAME SALGADO',
-     'KARLA FABIOLA ACEVEDO BERNARDINO',
-     'ANTONIO ROMERO LEYVA',
-     'YOLISMA LOPEZ CERON',
-     'DIANA LETICIA ALCALA GONZALEZ']
+#identificacion pr nombres estará descativada ya que con el proyecto se puede dar con el equipo que lo trabaja, sin emabrgo, esta variabl puede ser útil más adelante para identificar cargas de trabajo por persona
+# equipos = { 
+#     'Operación Estratégica': ['LILIANA AVILA LOPEZ',
+#       'VERONICA ITZEL JIMENEZ GONZALEZ',
+#       'MARIANA RIOS MARTINEZ',
+#       'DANIEL LOPEZ SANCHEZ'],
+#     'Integración de Información': ['NALLELY BECERRIL DAVILA',
+#      'ROGELIO ROSALES MORALES',
+#      'JOSE MANUEL OCOMATL OLAYA',
+#      'HUGO GONZALEZ VALDEZ',
+#      'RUBI SAMANTHA MEDRANO MARTINEZ',
+#      'JOSE ANTONIO CHAVEZ CASTILLO',
+#      'VICTOR RAMIRO ESPINA CASAS',
+#      'ANA AGLAE FLORES AGUILAR'],
+#     'Control y Logística': ['ALEXEI PRADEL HERNANDEZ',
+#      'MA. GUADALUPE ADAME SALGADO',
+#      'KARLA FABIOLA ACEVEDO BERNARDINO',
+#      'ANTONIO ROMERO LEYVA',
+#      'YOLISMA LOPEZ CERON',
+#      'DIANA LETICIA ALCALA GONZALEZ']
+#     }
+# equip =[]
+# #proceso para asignar equipos a los diferentes folios por estatus de aclaracion de informacion OC
+      
+# for usuario in df['Usuario']:
+#     if usuario in equipos['Operación Estratégica']:
+#         equip.append('Operación Estratégica')
+#     if usuario in equipos['Integración de Información']:
+#         equip.append('Integración de Información')
+#     if usuario in equipos['Control y Logística']:
+#         equip.append('Control y Logística')
+#     if usuario not in equipos['Operación Estratégica'] and usuario not in equipos['Integración de Información'] and usuario not in equipos['Control y Logística']:
+#         equip.append('Sin equipo asignado a revisión') 
+
+equipos = {
+    'CNSIPEE':'Integración de Información',
+    'CNGE': 'Integración de Información',
+    'CNSPE':'Integración de Información',
+    'CNPJE':'Integración de Información',
+    'CNIJE':'Control y Logística',
+    'CNDHE':'Operación Estratégica',
+    'vacio':'Sin equipo asignado'
     }
 
-equip =[]
 
-for usuario in df['Usuario']:
-    if usuario in equipos['Operación Estratégica']:
-        equip.append('Operación Estratégica')
-    if usuario in equipos['Integración de Información']:
-        equip.append('Integración de Información')
-    if usuario in equipos['Control y Logística']:
-        equip.append('Control y Logística')
-    if usuario not in equipos['Operación Estratégica'] and usuario not in equipos['Integración de Información'] and usuario not in equipos['Control y Logística']:
-        equip.append('Sin equipo asignado a revisión') 
-        
+
 df.insert(1,'Proyecto',[proyectos[x[-4]] for x in df['Folio']],allow_duplicates=False)
 df.insert(2,'Módulo',[x[-4:] for x in df['Folio']],allow_duplicates=False)
 df.insert(3,'Num_Entidad',[x[:-4] for x in df['Folio']],allow_duplicates=False)
-df.insert(4,'Equipo',equip)
+df.insert(4,'Equipo',[equipos[x] for x in df['Proyecto']],allow_duplicates=False)
 reg = []
 for val in df['Num_Entidad']:
     for k in region:
@@ -95,7 +108,33 @@ for val in df['Num_Entidad']:
             break
 df.insert(4,'Región',reg,allow_duplicates=False)
 
-
+#hacer variables de fechas para revision oc y recuperacion de firmas y sellos
+f_corte = {#cada llave tiene una lista con dos valores, el primero es la fecha de inicio a revision oc del cronograma y el segundo es la fecha de conclusion de recuperacion de firma 
+    'CNSIPEE':['24/02/2022 00:00:00','10/06/2022 00:00:00'],
+    'CNGE': ['09/05/2022 00:00:00','08/07/2022 00:00:00'],
+    'CNSPE':['30/05/2022 00:00:00','29/07/2022 00:00:00'],
+    'CNPJE':['13/06/2022 00:00:00','12/08/2022 00:00:00'],
+    'CNIJE':['27/06/2022 00:00:00','12/08/2022 00:00:00'],
+    'CNDHE':['15/08/2022 00:00:00','07/10/2022 00:00:00'],
+    'vacio':['01/01/2022 00:00:00','01/01/2022 00:00:00']
+    }
+d_OC = []
+d_firma = []
+c = 0
+for registro in df['Registro']:
+    try:#porque por alguna razón hay fechas que no lee bien
+        f_est = pd.to_datetime(registro,format="%d/%m/%Y %H:%M:%S")
+        proy = df['Proyecto'][c]
+        f_OC = pd.to_datetime(f_corte[proy][0],format="%d/%m/%Y %H:%M:%S")
+        f_Fir = pd.to_datetime(f_corte[proy][1],format="%d/%m/%Y %H:%M:%S")
+        d_OC.append(f_OC - f_est)
+        d_firma.append(f_Fir - f_est)
+    except:
+        d_OC.append('Error en fechas')
+        d_firma.append('Error en fechas')
+    c += 1
+df.insert(5,'Dias_inicio_RevOC',d_OC,allow_duplicates=False)#tener numero negativo quiere decir que ya se pasó la fecha y son los días de retraso
+df.insert(6,'Dias_fin_Recfirma',d_firma,allow_duplicates=False)#tener numero negativo quiere decir que ya se pasó la fecha y son los días de retraso
 #comienzo del tratamiento a los datos del df
 valores = [f'Aclaración de información (Revisión ROCE) ({x})' for x in range(1,10)]
 ndf1 = df[df.Estatus.isin(valores)] #nuevo frame filtrado con la variable de interes Estatus
