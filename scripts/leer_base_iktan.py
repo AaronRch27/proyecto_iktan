@@ -196,6 +196,7 @@ del ntest['Observación']
 del ntest['Contador de días']
 del ntest['cont']
 del ntest['Fecha']
+del ntest['Dias_inicio_RevOC'] #porque si ya llegó aquí, no tiene caso mostrarlo
 #guardar archivo
 # ntest.to_csv('Orden_de_atencion_por_fecha_de_llegada.csv',index=False,encoding='utf-8-sig')
 # with pd.ExcelWriter('analisis_seguimiento.xlsx',
@@ -226,7 +227,9 @@ estructura = {'Folio':[],
              'Región': [],
              'Equipo': [],
              'Rev_OC?': [],
+             'Dias_inicio_RevOC': [],
              'Recuperado_firma_y_sello?': [],
+             'Dias_fin_Recfirma': [],
              'Días_RevOC-último_estatus': []
              }
 #sumarle los nombres de las otras columnas
