@@ -250,7 +250,7 @@ def procesar(documento):
             for col in trabajar:
                 if col in estructura:
                     # print(col,trabajar.shape)
-                    estructura[col].append(list(trabajar[col])[0])
+                    estructura[col].append(list(trabajar[col])[-1])
             #nuevo dic para evitar duplicados
             uctu = {}
             for val in nombres_col:
