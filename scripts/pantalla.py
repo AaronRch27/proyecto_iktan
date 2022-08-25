@@ -24,8 +24,8 @@ equipos = {
     'vacio':'Sin equipo asignado'
     }
 
-
-A = []
+A = []#variables control
+B = []#variables control
 estado = StringVar()
 censo = StringVar()
 
@@ -40,7 +40,6 @@ def obtener_retraso(df):
                 if df['Dias_inicio_RevOC'][c].days < 0:
                     retrasos.append(df['Proyecto'][c])
         if df['Recuperado_firma_y_sello?'][c] == 'No':
-            print(df['Dias_fin_Recfirma'][c])
             if type(df['Dias_fin_Recfirma'][c]) != str:
                 if df['Dias_fin_Recfirma'][c].days < 0:
                     r2.append(df['Proyecto'][c])
@@ -77,38 +76,38 @@ def ruta():
                     message = texto,
                     title = '¡Alerta de retraso!'
                     )
-            # br = ventana.pack_slaves()#limpiar interfaz
-            # for val in br:
-            #     val.destroy()
-            
+            B.append(1) #variable control para desplegar nuevo boton
+            br = ventana.pack_slaves()#limpiar interfaz
+            for val in br[:5]:
+                val.destroy()
+            if B:
+                tk.Label(ventana, text="Ahora selecciona el proyecto que quieres consultar ").pack()
+                despl = ttk.Combobox(
+                    state='readonly',
+                    values=list(OA['Proyecto'].unique())
+                    )
+                despl.pack()
+                
+                
+                def consul():
+                    if A:
+                        br = ventana.pack_slaves()
+                        br[-1].destroy()
+                        br[-2].destroy()#para quitar tabla y mensaje
+                    pro = despl.get() #esta se usa con la variable equipos
+                    filtro = OA.loc[OA['Equipo']==equipos[pro]]
+                    filtro = filtro.loc[:,['Proyecto','Módulo','Entidad','Registro']]
+                    tk.Label(ventana, text="Los módulos que tiene pendientes el equipo que revisa tu proyecto son los siguientes: ").pack()
+                    tab = tk.Text(ventana)
+                    tab.insert(tk.INSERT, filtro.to_string())
+                    tab.pack()
+                    A.append(1)
+                    return 
+                tk.Button(ventana, text ="Consultar", command = consul).pack()
+                
         tk.Button(ventana,
                   text ="Seleccionar",
                   command = retrasos).pack()
-        tk.Label(ventana, text="Ahora selecciona el proyecto que quieres consultar ").pack()
-        despl = ttk.Combobox(
-            state='readonly',
-            values=list(OA['Proyecto'].unique())
-            )
-        despl.pack()
-        
-        
-        def consul():
-            if A:
-                br = ventana.pack_slaves()
-                br[-1].destroy()
-                br[-2].destroy()#para quitar tabla y mensaje
-            pro = despl.get() #esta se usa con la variable equipos
-            filtro = OA.loc[OA['Equipo']==equipos[pro]]
-            filtro = filtro.loc[:,['Proyecto','Módulo','Entidad','Registro']]
-            tk.Label(ventana, text="Los módulos que tiene pendientes el equipo que revisa tu proyecto son los siguientes: ").pack()
-            tab = tk.Text(ventana)
-            tab.insert(tk.INSERT, filtro.to_string())
-            tab.pack()
-            A.append(1)
-            return 
-        tk.Button(ventana, text ="Consultar", command = consul).pack()
-        
-
 
 boton1 = tk.Button(ventana, text ="Iniciar", command = ruta)
 boton1.pack()
