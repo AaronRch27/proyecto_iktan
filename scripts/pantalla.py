@@ -8,10 +8,12 @@ Created on Tue Aug 23 10:55:58 2022
 import tkinter as tk
 from tkinter import filedialog, ttk, messagebox, StringVar
 from leer_base_iktan import procesar, save
+from datetime import datetime
 
-
+hoy =  datetime.now()
 ventana = tk.Tk()
 ventana.title('Prueba')
+ventana.geometry('900x600')
 tk.Label(ventana, text="Hola, para iniciar presiona el botón y selecciona un archivo en formato .xlsx (excel) con el reporte de seguimiento tal como se descarga de la plataforma IKTAN").pack() 
 
 equipos = {
@@ -28,6 +30,15 @@ A = []#variables control
 B = []#variables control
 estado = StringVar()
 censo = StringVar()
+
+def mod_text(texto):
+    "funcion para modificartexto de estatus y reducirlo"
+    lista = texto.split()
+    resultado = []
+    for val in lista[:-1]: #menos 1 es el parentesis con el numero de revision, ese no es necesrio
+        resultado.append(val[:2])
+    res = ' '.join(resultado)
+    return res
 
 def obtener_retraso(df):
     df = df.reset_index(drop=True)
@@ -57,7 +68,7 @@ def obtener_retraso(df):
 
 def ruta():
     archivo = filedialog.askopenfile(mode='r')
-    ROCE,OA,historial = procesar(archivo.name)
+    ROCE,OA,historial,fecha_d = procesar(archivo.name)
     save(ROCE,OA,historial)
     if type(ROCE) != list:
         tk.Label(ventana, text="Selecciona tu entidad ").pack()
@@ -90,15 +101,29 @@ def ruta():
                 
                 
                 def consul():
+                    
                     if A:
                         br = ventana.pack_slaves()
-                        br[-1].destroy()
-                        br[-2].destroy()#para quitar tabla y mensaje
+                        for sl in br[-4:]:
+                            sl.destroy()
+                        # br[-1].destroy()
+                        # br[-2].destroy()#para quitar tabla y mensaje
+                    tk.Label(ventana,text='Fecha de descarga de base: '+fecha_d[:11]).pack()
+                    tk.Label(ventana,text='Fecha de esta consulta:'+ hoy.strftime("%d/%m/%Y")).pack()
                     pro = despl.get() #esta se usa con la variable equipos
                     filtro = OA.loc[OA['Equipo']==equipos[pro]]
-                    filtro = filtro.loc[:,['Proyecto','Módulo','Entidad','Registro']]
+                    turnos = [i for i in range(1,len(list(filtro['Usuario']))+1)]
+                    filtro['Turno'] = turnos
+                    #sobrescribir estatus para ahorrar espacio
+                    filtro['Estatus'] = [mod_text(i) for i in list(filtro['Estatus'])] 
+                    filtro['Registro'] = [i[:11] for i in list(filtro['Registro'])]
+                    filtro = filtro.set_index('Turno')
+                    filtro = filtro.loc[:,['Proyecto',
+                                           'Módulo','Entidad',
+                                           'Registro','Estatus',
+                                           'Usuario']]
                     tk.Label(ventana, text="Los módulos que tiene pendientes el equipo que revisa tu proyecto son los siguientes: ").pack()
-                    tab = tk.Text(ventana)
+                    tab = tk.Text(ventana,width=100)
                     tab.insert(tk.INSERT, filtro.to_string())
                     tab.pack()
                     A.append(1)

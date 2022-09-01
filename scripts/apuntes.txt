@@ -2,3 +2,6 @@ formato interno se hace a artir de reporte descargado
 luego siguetrackin que es la presnetacion del formato digerible para sharepoint
 
 ver el estatus para hacer una fila de labores de revision dentro de oc, en columna estatus
+
+turno, estatus, quien lo revisa
+también integrar fechas de base y actual

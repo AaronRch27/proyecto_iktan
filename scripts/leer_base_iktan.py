@@ -50,26 +50,29 @@ def procesar(documento):
                   'sureste':[4,23,31]}
         #variable con los equipos de trabajo para identificar 
         #identificacion pr nombres estará descativada ya que con el proyecto se puede dar con el equipo que lo trabaja, sin emabrgo, esta variabl puede ser útil más adelante para identificar cargas de trabajo por persona
-        # equipos = { 
-        #     'Operación Estratégica': ['LILIANA AVILA LOPEZ',
-        #       'VERONICA ITZEL JIMENEZ GONZALEZ',
-        #       'MARIANA RIOS MARTINEZ',
-        #       'DANIEL LOPEZ SANCHEZ'],
-        #     'Integración de Información': ['NALLELY BECERRIL DAVILA',
-        #      'ROGELIO ROSALES MORALES',
-        #      'JOSE MANUEL OCOMATL OLAYA',
-        #      'HUGO GONZALEZ VALDEZ',
-        #      'RUBI SAMANTHA MEDRANO MARTINEZ',
-        #      'JOSE ANTONIO CHAVEZ CASTILLO',
-        #      'VICTOR RAMIRO ESPINA CASAS',
-        #      'ANA AGLAE FLORES AGUILAR'],
-        #     'Control y Logística': ['ALEXEI PRADEL HERNANDEZ',
-        #      'MA. GUADALUPE ADAME SALGADO',
-        #      'KARLA FABIOLA ACEVEDO BERNARDINO',
-        #      'ANTONIO ROMERO LEYVA',
-        #      'YOLISMA LOPEZ CERON',
-        #      'DIANA LETICIA ALCALA GONZALEZ']
-        #     }
+        equipos_nom = { 
+            'Operación Estratégica': ['LILIANA AVILA LOPEZ',
+              'VERONICA ITZEL JIMENEZ GONZALEZ',#no estan en base de datos
+              'MARIANA RIOS MARTINEZ',
+              'DANIEL LOPEZ SANCHEZ'],#no estan en base de datos
+            'Integración de Información': ['NALLELY BECERRIL DAVILA',
+              'ROGELIO ROSALES MORALES',
+              'JOSE MANUEL OCOMATL OLAYA',
+              'HUGO GONZALEZ VALDEZ',
+              'RUBI SAMANTHA MEDRANO MARTINEZ',
+              'JOSE ANTONIO CHAVEZ CASTILLO',
+              'VICTOR RAMIRO ESPINA CASAS',
+              'ANA AGLAE FLORES AGUILAR'],
+            'Control y Logística': ['ALEXEI PRADEL HERNANDEZ',
+              'MA. GUADALUPE ADAME SALGADO',
+              'KARLA FABIOLA ACEVEDO BERNARDINO',
+              'ANTONIO ROMERO LEYVA',
+              'YOLISMA IVETTE LOPEZ CERON',
+              'DIANA LETICIA ALCALA GONZALEZ']
+            }
+        plantilla = []#esta variable contiene los nombres de todos los de Oficinas Centrales
+        for k in equipos_nom:
+            plantilla += equipos_nom[k]
         # equip =[]
         # #proceso para asignar equipos a los diferentes folios por estatus de aclaracion de informacion OC
               
@@ -200,6 +203,15 @@ def procesar(documento):
         del ntest['cont']
         del ntest['Fecha']
         del ntest['Dias_inicio_RevOC'] #porque si ya llegó aquí, no tiene caso mostrarlo
+        #ahora filtrar por miembros del equipo
+        fila = 0
+        borrar = []
+        ntest = ntest.reset_index(drop=True)
+        for val in list(ntest['Usuario']):
+            if val not in plantilla:
+                borrar.append(fila)
+            fila += 1
+        ntest = ntest.drop(borrar,axis=0)
         #guardar archivo
         # ntest.to_csv('Orden_de_atencion_por_fecha_de_llegada.csv',index=False,encoding='utf-8-sig')
         # with pd.ExcelWriter('analisis_seguimiento.xlsx',
@@ -288,7 +300,8 @@ def procesar(documento):
                     
             c1 += 1
         historial = pd.DataFrame(estructura)
-        return rt, ntest, historial
+        fecha = list(df['Folio'])[-2] #fecha de descarga de la base
+        return rt, ntest, historial, fecha
     except: 
         return [],[],[]#para identificar error
     
