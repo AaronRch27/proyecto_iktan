@@ -29,6 +29,7 @@ equipos = {
 A = []#variables control
 B = []#variables control
 estado = StringVar()
+persona = StringVar()
 censo = StringVar()
 
 def mod_text(texto):
@@ -75,28 +76,42 @@ def ruta():
         edos = ttk.Combobox(
             state='readonly',
             textvariable=estado,
-            values=list(historial['Entidad'].unique())
+            values=list(historial['Entidad'].unique())+['Todos']
             )
         edos.pack()
         def retrasos():
             edo = estado.get()
-            filtro = historial.loc[historial['Entidad']==edo]
-            texto = obtener_retraso(filtro)
-            if texto:
-                messagebox.showinfo(
-                    message = texto,
-                    title = '¡Alerta de retraso!'
-                    )
+            if edo != 'Todos':
+                filtro = historial.loc[historial['Entidad']==edo]
+                texto = obtener_retraso(filtro)
+                if texto:
+                    messagebox.showinfo(
+                        message = texto,
+                        title = '¡Alerta de retraso!'
+                        )
             B.append(1) #variable control para desplegar nuevo boton
             br = ventana.pack_slaves()#limpiar interfaz
             for val in br[:5]:
                 val.destroy()
             if B:
-                tk.Label(ventana, text="Ahora selecciona el proyecto que quieres consultar ").pack()
-                despl = ttk.Combobox(
-                    state='readonly',
-                    values=list(OA['Proyecto'].unique())
-                    )
+                tk.Label(ventana, 
+                         text="Ahora selecciona el proyecto que quieres consultar "
+                         ).pack()
+                tk.Label(ventana, 
+                         text="Si el proyecto que buscas no está en lista, o directamente no hay lista, es porque aún no ha sido asignado para revisión o tiene un estatus diferente a los registrados para revisión en Oficinas Centrales",
+                         font=('Times 6')
+                         ).pack()
+                if edo != 'Todos':
+                    OA1 = OA.loc[OA['Entidad']==edo]
+                    despl = ttk.Combobox(
+                        state='readonly',
+                        values=list(OA1['Proyecto'].unique())
+                        )
+                if edo == 'Todos':
+                    despl = ttk.Combobox(
+                        state='readonly',
+                        values=list(OA['Proyecto'].unique())
+                        )
                 despl.pack()
                 
                 
@@ -127,6 +142,28 @@ def ruta():
                     tab.insert(tk.INSERT, filtro.to_string())
                     tab.pack()
                     A.append(1)
+                    li_des = ttk.Combobox(
+                        state='readonly',
+                        textvariable=persona,
+                        values=list(filtro['Usuario'].unique())
+                        ).pack()
+                    
+                    def f_per():
+                        perso = persona.get()
+                        br = ventana.pack_slaves()
+                        for sl in br[-4:]:
+                            sl.destroy()
+                        filtro1 = filtro.loc[filtro['Usuario']==perso]
+                        turnos = [i for i in range(1,len(list(filtro1['Usuario']))+1)]
+                        filtro1['Turno'] = turnos
+                        filtro1 = filtro1.set_index('Turno')
+                        tk.Label(ventana, text="Los módulos que revisa la persona seleccionada son los siguientes: ").pack()
+                        tab = tk.Text(ventana,width=100)
+                        tab.insert(tk.INSERT, filtro1.to_string())
+                        tab.pack()
+                        return
+                    
+                    tk.Button(ventana, text ="Filtrar", command = f_per).pack()    
                     return 
                 tk.Button(ventana, text ="Consultar", command = consul).pack()
                 
