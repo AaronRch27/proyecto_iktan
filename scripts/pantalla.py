@@ -99,7 +99,8 @@ def ruta():
                          ).pack()
                 tk.Label(ventana, 
                          text="Si el proyecto que buscas no está en lista, o directamente no hay lista, es porque aún no ha sido asignado para revisión o tiene un estatus diferente a los registrados para revisión en Oficinas Centrales",
-                         font=('Times 6')
+                         font=('Times 10'),
+                         wraplength=650
                          ).pack()
                 if edo != 'Todos':
                     OA1 = OA.loc[OA['Entidad']==edo]
@@ -119,8 +120,12 @@ def ruta():
                     
                     if A:
                         br = ventana.pack_slaves()
-                        for sl in br[-4:]:
-                            sl.destroy()
+                        if len(br)==8:
+                            for sl in br[-4:]:
+                                sl.destroy()
+                        if len(br)==10:
+                            for sl in br[-6:]:
+                                sl.destroy()
                         # br[-1].destroy()
                         # br[-2].destroy()#para quitar tabla y mensaje
                     tk.Label(ventana,text='Fecha de descarga de base: '+fecha_d[:11]).pack()
