@@ -11,7 +11,7 @@ import pandas as pd
 
 #leer archivo descargado de iktan
 
-documento = pd.read_excel('xIktan_20220727034229952_reporteSegumiento.xlsx')
+documento = pd.read_excel('xIktan_20220907015014929_reporteSegumiento.xlsx')
 
 #formar nuevo dataframe
 rep = documento.fillna('vacio') #llenar espacios vacios con la palabra 'vacio'
@@ -33,7 +33,9 @@ df = pd.DataFrame(frame)
 proyectos = {'1':'CNGE','2':'CNSPE','3':'CNSIPEE',
              '4':'CNPJE','5':'CNIJE',
              '6':'CNPLE','7':'CNDHE',
-             '8':'CNTAIPPDPE','a':'vacio'}
+             '8':'CNTAIPPDPE','a':'vacio',
+             '0': 'vacio',
+             'vacio': 'vacio'}
 
 region = {'centro':[9],
           'centro_norte':[1,11,22,24],
@@ -103,7 +105,7 @@ equipos = {
 
 
 
-df.insert(1,'Proyecto',[proyectos[x[-4]] for x in df['Folio']],allow_duplicates=False)
+df.insert(1,'Proyecto',[proyectos[x[-4]] if len(x)<8 else 'vacio' for x in df['Folio']],allow_duplicates=False)
 df.insert(2,'Módulo',[x[-4:] for x in df['Folio']],allow_duplicates=False)
 df.insert(3,'Num_Entidad',[x[:-4] for x in df['Folio']],allow_duplicates=False)
 df.insert(4,'Equipo',[equipos[x] for x in df['Proyecto']],allow_duplicates=False)
