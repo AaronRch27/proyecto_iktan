@@ -6,9 +6,10 @@ Created on Wed Jul 27 17:35:44 2022
 """
 
 import pandas as pd
+from datetime import datetime
 
 
-
+hoy =  datetime.now()
 #leer archivo descargado de iktan
 
 # documento = pd.read_excel('xIktan_20220727034229952_reporteSegumiento.xlsx')
@@ -56,6 +57,7 @@ def procesar(documento):
         'Operación Estratégica': ['LILIANA AVILA LOPEZ',
           'VERONICA ITZEL JIMENEZ GONZALEZ',#no estan en base de datos
           'MARIANA RIOS MARTINEZ',
+          'VICTOR AYAX QUINTERO ORTEGA',
           'DANIEL LOPEZ SANCHEZ'],#no estan en base de datos
         'Integración de Información': ['NALLELY BECERRIL DAVILA',
           'ROGELIO ROSALES MORALES',
@@ -203,17 +205,26 @@ def procesar(documento):
     del ntest['Observación']
     del ntest['Contador de días']
     del ntest['cont']
-    del ntest['Fecha']
+    
     del ntest['Dias_inicio_RevOC'] #porque si ya llegó aquí, no tiene caso mostrarlo
     #ahora filtrar por miembros del equipo
     fila = 0
-    borrar = []
+    # borrar = []
     ntest = ntest.reset_index(drop=True)
     for val in list(ntest['Usuario']):
         if val not in plantilla:
-            borrar.append(fila)
+            if 'Revisión OC' in ntest.loc[fila,'Estatus']:
+                ntest.loc[fila,'Estatus'] = 'Pendiente' 
+                ntest.loc[fila,'Usuario'] = 'Por asignar'
+        retraso = hoy - ntest.loc[fila,'Fecha'] 
+        if retraso.days > 5:
+            #si hay retraso no se cambia al usuario
+            # ntest.loc[fila,'Usuario'] = 'Retraso en aisgnación'
+            ntest.loc[fila,'Estatus'] = 'FueraT'
+            # borrar.append(fila)
         fila += 1
-    ntest = ntest.drop(borrar,axis=0)
+    del ntest['Fecha']
+    ntest = pd.DataFrame(ntest)
     #guardar archivo
     # ntest.to_csv('Orden_de_atencion_por_fecha_de_llegada.csv',index=False,encoding='utf-8-sig')
     # with pd.ExcelWriter('analisis_seguimiento.xlsx',

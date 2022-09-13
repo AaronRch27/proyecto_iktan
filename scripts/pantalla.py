@@ -34,12 +34,28 @@ censo = StringVar()
 
 def mod_text(texto):
     "funcion para modificartexto de estatus y reducirlo"
-    lista = texto.split()
-    resultado = []
-    for val in lista[:-1]: #menos 1 es el parentesis con el numero de revision, ese no es necesrio
-        resultado.append(val[:2])
-    res = ' '.join(resultado)
+    # lista = texto.split()
+    # resultado = []
+    # for val in lista[:-1]: #menos 1 es el parentesis con el numero de revision, ese no es necesrio
+    #     resultado.append(val[:2])
+    # res = ' '.join(resultado)
+    if 'Revisión OC' in texto or 'Pendiente' in texto:
+        res = 'Pendiente'
+    elif 'FueraT' in texto:
+        res = 'En revisión'
+    else:
+        res = 'En revisión'
     return res
+
+def retrasoOC(df):
+    fil = df.loc[df['Estatus']=='FueraT']
+    equi = list(fil['Equipo'].unique())
+    res = {}
+    for e in equi:
+        f = fil.loc[fil['Equipo']==e]
+        res[e] = list(f['Proyecto'].unique())
+    salida = 'El o los siguientes equipos tienen un retraso en asignación para revisión de módulos en los siguientes proyectos: '+str(res)
+    return salida
 
 def obtener_retraso(df):
     df = df.reset_index(drop=True)
@@ -85,6 +101,14 @@ def ruta():
                 filtro = historial.loc[historial['Entidad']==edo]
                 texto = obtener_retraso(filtro)
                 if texto:
+                    messagebox.showinfo(
+                        message = texto,
+                        title = '¡Alerta de retraso!'
+                        )
+            if edo =='Todos':
+                rev = list(OA['Estatus'])
+                if 'FueraT' in rev:
+                    texto = retrasoOC(OA)
                     messagebox.showinfo(
                         message = texto,
                         title = '¡Alerta de retraso!'
