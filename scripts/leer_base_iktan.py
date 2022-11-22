@@ -314,18 +314,59 @@ def procesar(documento):
         c1 += 1
     historial = pd.DataFrame(estructura)
     fecha = list(df['Folio'])[-2] #fecha de descarga de la base
-    return rt, ntest, historial, fecha
+    
+    #### avance de revision de censos por equipo
+
+    censos = list(df['Proyecto'].unique())
+    if 'vacio' in censos:
+        censos.remove('vacio')
+    cen_can = {} #cantidad de cuestionarios
+    avan = []
+    for censo in censos:
+        bb = df.loc[df['Proyecto']==censo]
+        cantidad = len(list(bb['Folio'].unique()))
+        cen_can[censo] = cantidad
+        #otro proceso dentro de esta iteracion
+        # bb = df.loc[df['Proyecto']==censo]
+        filtros = list(bb['Folio'].unique())
+        r = 0
+        for filtro in filtros:
+            bb1 = bb.loc[bb['Folio']==filtro]
+            sta = list(bb1['Estatus'])
+            suma = False
+            for es in sta:
+                if 'Recuperado con firma y sello' in es:
+                    suma = True
+                    break
+            if suma:
+                r += 1
+        avan.append(r)
+        
+    avance = {'Equipo':[equipos[x] for x in list(cen_can.keys())],
+           'Programa':list(cen_can.keys()),
+           'Cuestionarios':list(cen_can.values()),
+           'Avance':avan,
+           'Porcentaje':[]
+           }
+    c = 0
+    for val in list(cen_can.values()):
+        avance['Porcentaje'].append(f'{round(avan[c]*100/val)}%')
+        c += 1
+    avance = pd.DataFrame(avance)
+    
+    return rt, ntest, historial, fecha, avance
     # except: 
     #     return [],[],[],[]#para identificar error
     
     
 
-def save(rt,ntest,historial):
+def save(rt,ntest,historial,avance):
 # historial.to_csv('Historial_de_revision_OC.csv',index=False,encoding='utf-8-sig')
     with pd.ExcelWriter('analisis_seguimiento.xlsx') as writer:  
         rt.to_excel(writer, sheet_name='Revision_ROCE',index=False)
         ntest.to_excel(writer, sheet_name='Orden_atencion',index=False)
         historial.to_excel(writer, sheet_name='historial',index=False)
+        avance.to_excel(writer, sheet_name='avance',index=False)
     
     return
     

@@ -38,8 +38,8 @@ class aplicacion(tk.Frame):
         
     def ruta(self):
         archivo = filedialog.askopenfile(mode='r')
-        self.ROCE,self.OA,self.historial,self.fecha_d = procesar(archivo.name)
-        save(self.ROCE,self.OA,self.historial)
+        self.ROCE,self.OA,self.historial,self.fecha_d,self.avance = procesar(archivo.name)
+        save(self.ROCE,self.OA,self.historial,self.avance)
         if type(self.ROCE) != list:
             br = self.pack_slaves()#limpiar interfaz
             for val in br:
@@ -118,7 +118,7 @@ class aplicacion(tk.Frame):
     def consul(self):
         self.NV = tk.Toplevel(self)
         self.NV.title('Tabla de turnos')
-        self.NV.geometry('900x600')
+        self.NV.geometry('900x700')
         tk.Label(self.NV,text='Fecha de descarga de base: '+self.fecha_d[:11]).pack()
         tk.Label(self.NV,text='Fecha de esta consulta:'+ self.hoy.strftime("%d/%m/%Y")).pack()
         pro = self.despl.get() #esta se usa con la variable equipos
@@ -155,6 +155,13 @@ class aplicacion(tk.Frame):
         li_des.pack()
         b3 = tk.Button(self.NV, text ="Filtrar", command = self.f_per)
         b3.pack()  
+        
+        filtro2 = self.avance.loc[self.avance['Equipo']==equipos[pro]]
+        filtro2 = filtro2.loc[:,['Programa','Porcentaje']]
+        tk.Label(self.NV, text='Avance de revisión del equipo: ').pack()
+        AV = tk.Label(self.NV, text=filtro2.to_string())
+        AV.config(font=("Courier", 10))
+        AV.pack()
         tk.Label(self.NV, text=self.texto_in).pack()
     
     def consul1(self):
