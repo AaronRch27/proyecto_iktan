@@ -1,3 +1,8 @@
 Ordenar los turnos dependiendo de las regiones.
 Cambiar lista desplegable de estados por lista de regiones.
 
+Revisar tablas cuando se selecciona todos para OC
+Profundizar en el desempeño de revisión por cada persona. Generar un 
+informe de lo que se hizo este año para usarlo como punto de partida.
+Enviar el ejecutable para sus pruebas
+
