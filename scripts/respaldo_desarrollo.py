@@ -50,11 +50,13 @@ region = {'centro':[9],
           'sur':[7,20,27],
           'sureste':[4,23,31]}
 #variable con los equipos de trabajo para identificar 
+
 #identificacion pr nombres estará descativada ya que con el proyecto se puede dar con el equipo que lo trabaja, sin emabrgo, esta variabl puede ser útil más adelante para identificar cargas de trabajo por persona
 equipos_nom = { 
     'Operación Estratégica': ['LILIANA AVILA LOPEZ',
       'VERONICA ITZEL JIMENEZ GONZALEZ',#no estan en base de datos
       'MARIANA RIOS MARTINEZ',
+      'VICTOR AYAX QUINTERO ORTEGA',
       'DANIEL LOPEZ SANCHEZ'],#no estan en base de datos
     'Integración de Información': ['NALLELY BECERRIL DAVILA',
       'ROGELIO ROSALES MORALES',
@@ -364,3 +366,81 @@ for val in list(cen_can.values()):
     avance['Porcentaje'].append(f'{round(avan[c]*100/val)}%')
     c += 1
 avance = pd.DataFrame(avance)
+
+#Desempeño de los revisores
+revs = [f'Aclaración de información OC ({x})' for x in range(1,15)]
+fff = ['En proceso de firma y sello (1)'] #solo este porque los demas ya corresponden aveces a otro miembro de los revisores, generalmente del equipo de Alexei
+nw1 = df[df.Estatus.isin(revs+fff)]
+general_r = nw1.copy()
+general = df.copy()
+excluir = ['LILIANA AVILA LOPEZ','NALLELY BECERRIL DAVILA',
+           'ALEXEI PRADEL HERNANDEZ']
+control = {
+    'usuario':[],
+    'equipo':[],
+    'cuestionarios_revisados':[],
+    'promedio_dias_revision':[],
+    'prom_revisiones_por_cuestionario':[]
+    }
+for usuario in plantilla: #itearar por cada usuario en el directorio de OC
+    if usuario not in excluir: #sacar a los jefes   
+        folios = general_r.loc[general['Usuario']==usuario]#cuestionarios del usuario
+        cuestionarios_revisados = list(folios['Folio'].unique())
+        #conseguir el equipo del usuario
+        for equpo in equipos_nom:
+            if usuario in equipos_nom[equpo]:
+                control['equipo'].append(equpo)
+        # print(usuario,len(cuestionarios_revisados))
+        control['usuario'].append(usuario)
+        control['cuestionarios_revisados'].append(len(cuestionarios_revisados))
+        n_revisiones = [] #numero de revisiones por cuestionario
+        fechas = []#lista con tuplas de fecha inicio revision OC y fecha de siguiente estatus que es cuando terminaron de revisar
+        for cuestionario in cuestionarios_revisados:
+            folio = general.loc[general['Folio']==cuestionario]#solo con los folios de un cuestionario--es base pequeña
+            folio = folio.reset_index(drop=True)
+            ultimoOC = 0 #conteo de  revisiones
+            c = 0
+            # for estatus in list(folio['Estatus']):
+            #     if 'Revisión OC' in estatus:
+                    
+            #         #sacar fecha de inicio de revisión
+            #         try:#se usa un try porque c+1 aveces excede el numero de index de la lista y da error
+            #             chek = list(folio['Estatus'])[c+1:]
+            #             # print(chek)
+            #             if 'Revisión OC' in chek[0]:
+            #                 c += 1
+            #                 continue #pasar al siguiente estatus porque este no interesa para la fecha
+            #             if list(folio['Usuario'])[c+1]==usuario:
+            #                 f_ini = folio['Registro'][c]
+            #                 f_term = folio['Registro'][c+1]
+            #                 fechas.append((f_ini,f_term)) 
+            #                 ultimoOC = estatus
+            #         except:
+            #             pass
+            #     c += 1
+                
+            for proceso in list(folio['Usuario']):
+                if usuario == proceso:
+                    f_ini = folio['Registro'][c-1]
+                    f_term = folio['Registro'][c]
+                    inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
+                    term = datetime.strptime(f_term,"%d/%m/%Y %H:%M:%S")
+                    resta = term-inicio
+                    fechas.append(resta.days) 
+                    ultimoOC += 1
+                c += 1
+                   
+            if ultimoOC:
+                # num = ''
+                # for letra in ultimoOC:
+                #     if letra.isdigit():
+                #         num += letra
+                # revision = int(num) #sacar numero de la string y convertirlo a formato numero
+                n_revisiones.append(ultimoOC)
+        # print(len(fechas),len(n_revisiones),sum(n_revisiones)) #los len no son iguales porque hay más revisiones y el numero de aquí solo representa la cantidad de ellas, mientras que las fechas es una tupla por revision
+        control['promedio_dias_revision'].append(resta.days / len(fechas) if len(fechas)>0 else 0)
+        control['prom_revisiones_por_cuestionario'].append(sum(n_revisiones) / len(n_revisiones) if len(n_revisiones)>0 else 0)
+desempe = pd.DataFrame(control)
+        
+                
+                

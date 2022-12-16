@@ -1,8 +1,10 @@
-Ordenar los turnos dependiendo de las regiones.
-Cambiar lista desplegable de estados por lista de regiones.
+Ya genera información sobre el desempeño de los responsables revisores. 
+Falta revisar el tema de la identificación de responsables revisoress desde estatus.
+Para ello valdría preguntar a Alexei lo que le respondieron de informática.
 
-Revisar tablas cuando se selecciona todos para OC
-Profundizar en el desempeño de revisión por cada persona. Generar un 
-informe de lo que se hizo este año para usarlo como punto de partida.
-Enviar el ejecutable para sus pruebas
+Queda pendiente entonces editar esa parte del filtrado, removiendo los estatus de
+aclaración de informacion derivado de OC.
+
+Queda pendiente emitir pantalla de contraseña o palabra clave al seleccionar entidad Todas
+que corresponde a oficinas centrales.
 

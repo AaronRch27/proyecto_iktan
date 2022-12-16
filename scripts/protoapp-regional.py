@@ -16,7 +16,7 @@ class aplicacion(tk.Frame):
     def __init__(self,master=None):
         super().__init__(master)
         self.master = master
-        self.master.title('Prueba')
+        self.master.title('ACIRO')
         self.master.geometry('900x200')
         self.pack()
         self.texto_in = 'Para fines internos exclusivamente (personal operativo)'
@@ -38,27 +38,32 @@ class aplicacion(tk.Frame):
         tk.Label(self, text=self.texto_in).pack()
         
     def ruta(self):
-        archivo = filedialog.askopenfile(mode='r')
-        self.ROCE,self.OA,self.historial,self.fecha_d,self.avance = procesar(archivo.name)
-        save(self.ROCE,self.OA,self.historial,self.avance)
-        if type(self.ROCE) != list:
-            br = self.pack_slaves()#limpiar interfaz
-            for val in br:
-                val.destroy()
-            l2 = tk.Label(self, text="Selecciona tu región ")
-            l2.pack()
-            edos = ttk.Combobox(self,
-                state='readonly',
-                textvariable=self.estado,
-                values=list(self.historial['Región'].unique())+['Todos']
-                )
-            edos.pack()                    
-            b2=tk.Button(self,
-                      text ="Seleccionar",
-                      command = self.retrasos)
-            b2.pack()
-            tk.Label(self, text=self.texto_in).pack()
-    
+        try:
+            archivo = filedialog.askopenfile(mode='r')
+            self.ROCE,self.OA,self.historial,self.fecha_d,self.avance,self.desemp = procesar(archivo.name)
+            save(self.ROCE,self.OA,self.historial,self.avance)
+            if type(self.ROCE) != list:
+                
+                br = self.pack_slaves()#limpiar interfaz
+                for val in br:
+                    val.destroy()
+                l2 = tk.Label(self, text="Selecciona tu región ")
+                l2.pack()
+                edos = ttk.Combobox(self,
+                    state='readonly',
+                    textvariable=self.estado,
+                    values=list(self.historial['Región'].unique())+['Todos']
+                    )
+                edos.pack()                    
+                b2=tk.Button(self,
+                          text ="Seleccionar",
+                          command = self.retrasos)
+                b2.pack()
+                tk.Label(self, text=self.texto_in).pack()
+        except Exception as e:
+            tk.Label(self, text="Error en la lectura, selecciona otro archivo ").pack()
+            tk.Label(self, text=e).pack()
+            
     def retrasos(self):
         edo = self.estado.get()
         self.edd = edo
@@ -140,7 +145,7 @@ class aplicacion(tk.Frame):
         filtro['Estatus'] = [self.mod_text(i) for i in list(filtro['Estatus'])] 
         filtro['Registro'] = [i[:11] for i in list(filtro['Registro'])]
         filtro = filtro.set_index('Turno')
-        filtro = filtro.loc[filtro['Región'] == self.edd]
+        filtro = filtro.loc[filtro['Región'] == self.edd] if self.edd!='Todos' else filtro
         self.filtro = filtro.loc[:,['Proyecto',
                                'Módulo','Entidad',
                                'Registro','Estatus',
@@ -190,7 +195,7 @@ class aplicacion(tk.Frame):
         filtro['Estatus'] = [self.mod_text(i) for i in list(filtro['Estatus'])] 
         filtro['Registro'] = [i[:11] for i in list(filtro['Registro'])]
         filtro = filtro.set_index('Turno')
-        filtro = filtro.loc[filtro['Región'] == self.edd]
+        filtro = filtro.loc[filtro['Región'] == self.edd] if self.edd!='Todos' else filtro
         self.filtro = filtro.loc[:,['Proyecto',
                                'Módulo','Entidad',
                                'Registro','Estatus',
@@ -223,6 +228,11 @@ class aplicacion(tk.Frame):
         tab = tk.Text(self.NV,width=100)
         tab.insert(tk.INSERT, filtro1.to_string())
         tab.pack()
+        #aquí condicional par que sino son de OC no se despliegue la informacion de desempeño
+        #comienza filtro para desplegar desempeño de responsable revisor
+        filtro2 = self.desemp.loc[self.desemp['usuario']==perso]
+        tk.Label(self.NV, text='Desempeño en revisiones').pack()
+        tk.Label(self.NV, text=filtro2.to_string()).pack()
         #boton para regresar
         brt1 = tk.Button(self.NV, text ="Regresar", command = self.consul1)
         brt1.pack()
