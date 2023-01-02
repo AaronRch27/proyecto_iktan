@@ -23,6 +23,8 @@ class aplicacion(tk.Frame):
         self.hoy = datetime.now()
         self.A = []#variables control
         self.estado = StringVar()
+        self.contras = StringVar()
+        self.user = StringVar()
         self.persona = StringVar()
         self.censo = StringVar()
         self.utilidades()
@@ -41,35 +43,113 @@ class aplicacion(tk.Frame):
         try:
             archivo = filedialog.askopenfile(mode='r')
             self.ROCE,self.OA,self.historial,self.fecha_d,self.avance,self.desemp = procesar(archivo.name)
-            save(self.ROCE,self.OA,self.historial,self.avance)
+            ##aqui pantalla de usuarios, el save se hará solo si es OC
+            # save(self.ROCE,self.OA,self.historial,self.avance)
             if type(self.ROCE) != list:
-                
                 br = self.pack_slaves()#limpiar interfaz
                 for val in br:
                     val.destroy()
-                l2 = tk.Label(self, text="Selecciona tu región ")
-                l2.pack()
-                edos = ttk.Combobox(self,
+                l1 = tk.Label(self, text="Perfil operativo ")
+                l1.pack()
+                users = ttk.Combobox(self,
                     state='readonly',
-                    textvariable=self.estado,
-                    values=list(self.historial['Región'].unique())+['Todos']
+                    textvariable=self.user,
+                    values=['Regional','OC']
                     )
-                edos.pack()                    
-                b2=tk.Button(self,
-                          text ="Seleccionar",
-                          command = self.retrasos)
-                b2.pack()
-                tk.Label(self, text=self.texto_in).pack()
+                users.pack()
+                #definir funcion para crear desplegables a partir de la elección del usuario en su tipo de usuario
+                def eleccion(evento):
+                    t_usuario = evento.widget.get()
+                    if t_usuario == 'Regional':
+                        br = self.pack_slaves()#limpiar interfaz
+                        if len(br)>2:
+                            for val in br[2:]:
+                                val.destroy()
+                        l2 = tk.Label(self, text="Selecciona tu región ")
+                        l2.pack()
+                        edos = ttk.Combobox(self,
+                            state='readonly',
+                            textvariable=self.estado,
+                            values=list(self.historial['Región'].unique())
+                            )
+                        edos.pack()                    
+                        b2=tk.Button(self,
+                                  text ="Seleccionar",
+                                  command = self.retrasos)
+                        b2.pack()
+                        tk.Label(self, text=self.texto_in).pack()
+                    
+                    if t_usuario == 'OC':
+                        br = self.pack_slaves()#limpiar interfaz
+                        if len(br)>2:
+                            for val in br[2:]:
+                                val.destroy()
+                        l2 = tk.Label(self, text="Introduce la contraseña ")
+                        l2.pack()
+                        contra = tk.Entry(self,
+                                          textvariable=self.contras
+                                          )
+                        contra.pack()
+                        b2=tk.Button(self,
+                                  text ="Continuar",
+                                  command = self.val_con)
+                        b2.pack()
+                        tk.Label(self, text=self.texto_in).pack()
+                users.bind("<<ComboboxSelected>>", eleccion)
+                
         except Exception as e:
             tk.Label(self, text="Error en la lectura, selecciona otro archivo ").pack()
             tk.Label(self, text=e).pack()
+    
+    def val_con(self):
+        contra = self.contras.get()
+        if contra == 'contraseñaOC':
+            self.edd = 'Todos'
+            save(self.ROCE,self.OA,self.historial,self.avance)
+            br = self.pack_slaves()#limpiar interfaz
+            for val in br:
+                val.destroy()
+            rev = list(self.OA['Estatus'])
+            if 'FueraT' in rev:
+                texto = self.retrasoOC(self.OA)
+                messagebox.showinfo(
+                    message = texto,
+                    title = '¡Alerta de retraso!'
+                    )
+            tk.Label(self, 
+                     text="Ahora selecciona el proyecto que quieres consultar "
+                     ).pack()
+            tk.Label(self, 
+                     text="Si el proyecto que buscas no está en lista, o directamente no hay lista, es porque aún no ha sido asignado para revisión o tiene un estatus diferente a los registrados para revisión en Oficinas Centrales",
+                     font=('Times 10'),
+                     wraplength=650
+                     ).pack()
+
+            self.despl = ttk.Combobox(self,
+                state='readonly',
+                values=list(self.OA['Proyecto'].unique())
+                )
+            self.despl.pack()
+            b2=tk.Button(self, text ="Consultar", command = self.consul)
+            b2.pack()
+            #agregar boton de regreso
+            btr = tk.Button(self, text ="Regresar", command = self.utilidades)
+            btr.pack() 
+            tk.Label(self, text=self.texto_in).pack()
+        else:
+            texto = 'Contraseña incorrecta'
+            messagebox.showinfo(
+                message = texto,
+                title = 'Error'
+                )
+            return
             
     def retrasos(self):
         edo = self.estado.get()
         self.edd = edo
-        br = self.pack_slaves()#limpiar interfaz
-        for val in br:
-            val.destroy()
+        # br = self.pack_slaves()#limpiar interfaz
+        # for val in br:
+        #     val.destroy()
         if edo == '' or edo== 'vacio':
             texto = 'Debes seleccionar algún estado'
             messagebox.showinfo(
@@ -78,6 +158,9 @@ class aplicacion(tk.Frame):
                 )
             return
         if edo != 'Todos':
+            br = self.pack_slaves()#limpiar interfaz
+            for val in br:
+                val.destroy()
             filtro = self.historial.loc[self.historial['Región']==edo]
             texto = self.obtener_retraso(filtro)
             if texto:
@@ -86,6 +169,9 @@ class aplicacion(tk.Frame):
                     title = '¡Alerta de retraso!'
                     )
         if edo =='Todos':
+            br = self.pack_slaves()#limpiar interfaz
+            for val in br:
+                val.destroy()
             rev = list(self.OA['Estatus'])
             if 'FueraT' in rev:
                 texto = self.retrasoOC(self.OA)

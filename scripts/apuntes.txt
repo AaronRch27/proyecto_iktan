@@ -5,8 +5,8 @@ Para ello valdría preguntar a Alexei lo que le respondieron de informática.
 Queda pendiente entonces editar esa parte del filtrado, removiendo los estatus de
 aclaración de informacion derivado de OC.
 
-Queda pendiente emitir pantalla de contraseña o palabra clave al seleccionar entidad Todas
-que corresponde a oficinas centrales.
 
 Pendiente también hacer cálculo de días que han pasado para jefes en asignar 
 los cuestionarios a los responsables revisores
+
+Pendiente la cuestión estética
