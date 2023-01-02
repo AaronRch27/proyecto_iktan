@@ -105,7 +105,7 @@ class aplicacion(tk.Frame):
         contra = self.contras.get()
         if contra == 'contraseñaOC':
             self.edd = 'Todos'
-            save(self.ROCE,self.OA,self.historial,self.avance)
+            save(self.ROCE,self.OA,self.historial,self.avance,self.desemp)
             br = self.pack_slaves()#limpiar interfaz
             for val in br:
                 val.destroy()
