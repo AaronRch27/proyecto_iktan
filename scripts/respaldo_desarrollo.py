@@ -371,6 +371,8 @@ avance = pd.DataFrame(avance)
 revs = [f'Aclaración de información OC ({x})' for x in range(1,15)]
 fff = ['En proceso de firma y sello (1)'] #solo este porque los demas ya corresponden aveces a otro miembro de los revisores, generalmente del equipo de Alexei
 nw1 = df[df.Estatus.isin(revs+fff)]
+nw2 = df[df.Estatus.isin(revOC)]
+gen_jef = nw2.copy()
 general_r = nw1.copy()
 general = df.copy()
 excluir = ['LILIANA AVILA LOPEZ','NALLELY BECERRIL DAVILA',
@@ -382,9 +384,16 @@ control = {
     'promedio_dias_revision':[],
     'prom_revisiones_por_cuestionario':[]
     }
+control_jefes = {
+    'usuario':[],
+    'equipo':[],
+    'cuestionarios_asignados':[],
+    'dias_prom_asig_cuestionario':[],
+    'dias_max_asig_cuestionario':[]
+    }
 for usuario in plantilla: #itearar por cada usuario en el directorio de OC
     if usuario not in excluir: #sacar a los jefes   
-        folios = general_r.loc[general['Usuario']==usuario]#cuestionarios del usuario
+        folios = general_r.loc[general_r['Usuario']==usuario]#cuestionarios del usuario
         cuestionarios_revisados = list(folios['Folio'].unique())
         #conseguir el equipo del usuario
         for equpo in equipos_nom:
@@ -400,25 +409,6 @@ for usuario in plantilla: #itearar por cada usuario en el directorio de OC
             folio = folio.reset_index(drop=True)
             ultimoOC = 0 #conteo de  revisiones
             c = 0
-            # for estatus in list(folio['Estatus']):
-            #     if 'Revisión OC' in estatus:
-                    
-            #         #sacar fecha de inicio de revisión
-            #         try:#se usa un try porque c+1 aveces excede el numero de index de la lista y da error
-            #             chek = list(folio['Estatus'])[c+1:]
-            #             # print(chek)
-            #             if 'Revisión OC' in chek[0]:
-            #                 c += 1
-            #                 continue #pasar al siguiente estatus porque este no interesa para la fecha
-            #             if list(folio['Usuario'])[c+1]==usuario:
-            #                 f_ini = folio['Registro'][c]
-            #                 f_term = folio['Registro'][c+1]
-            #                 fechas.append((f_ini,f_term)) 
-            #                 ultimoOC = estatus
-            #         except:
-            #             pass
-            #     c += 1
-                
             for proceso in list(folio['Usuario']):
                 if usuario == proceso:
                     f_ini = folio['Registro'][c-1]
@@ -437,10 +427,41 @@ for usuario in plantilla: #itearar por cada usuario en el directorio de OC
                 #         num += letra
                 # revision = int(num) #sacar numero de la string y convertirlo a formato numero
                 n_revisiones.append(ultimoOC)
-        # print(len(fechas),len(n_revisiones),sum(n_revisiones)) #los len no son iguales porque hay más revisiones y el numero de aquí solo representa la cantidad de ellas, mientras que las fechas es una tupla por revision
-        control['promedio_dias_revision'].append(resta.days / len(fechas) if len(fechas)>0 else 0)
+        # print(usuario,len(fechas),fechas,len(n_revisiones),sum(n_revisiones)) #los len no son iguales porque hay más revisiones y el numero de aquí solo representa la cantidad de ellas, mientras que las fechas es una tupla por revision
+        control['promedio_dias_revision'].append(sum(fechas) / len(fechas) if len(fechas)>0 else 0)
         control['prom_revisiones_por_cuestionario'].append(sum(n_revisiones) / len(n_revisiones) if len(n_revisiones)>0 else 0)
+    #ahora conseguir métricas para los jefes
+    if usuario in excluir:
+        folios = gen_jef.loc[gen_jef['Usuario']==usuario]#cuestionarios donde participa el jefe
+        cuestionarios_asignados = list(folios['Folio'].unique())
+        #conseguir el equipo del usuario
+        for equpo in equipos_nom:
+            if usuario in equipos_nom[equpo]:
+                control_jefes['equipo'].append(equpo)
+        # print(usuario,len(cuestionarios_revisados))
+        control_jefes['usuario'].append(usuario)
+        control_jefes['cuestionarios_asignados'].append(len(cuestionarios_asignados))
+        fechas = []
+        for cuestionario in cuestionarios_asignados:
+            folio = general.loc[general['Folio']==cuestionario]#solo con los folios de un cuestionario--es base pequeña
+            folio = folio.reset_index(drop=True)
+            c = 0
+            revi = list(folio['Estatus'])
+            for proceso in list(folio['Usuario']):
+                if usuario == proceso and revi[c] in revOC:#este filtro es para solo seleccionar al usuario cuando hizo un estatus de asignacion revision OC numero que sea
+                    f_ini = folio['Registro'][c-1]
+                    f_term = folio['Registro'][c]
+                    inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
+                    term = datetime.strptime(f_term,"%d/%m/%Y %H:%M:%S")
+                    resta = term-inicio
+                    fechas.append(resta.days) 
+                c += 1
+        # print(usuario,fechas)
+        control_jefes['dias_prom_asig_cuestionario'].append(sum(fechas) / len(fechas) if len(fechas)>0 else 0)
+        control_jefes['dias_max_asig_cuestionario'].append(max(fechas))
+            
 desempe = pd.DataFrame(control)
+desem_jefes = pd.DataFrame(control_jefes)
         
                 
                 

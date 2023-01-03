@@ -42,7 +42,7 @@ class aplicacion(tk.Frame):
     def ruta(self):
         try:
             archivo = filedialog.askopenfile(mode='r')
-            self.ROCE,self.OA,self.historial,self.fecha_d,self.avance,self.desemp = procesar(archivo.name)
+            self.ROCE,self.OA,self.historial,self.fecha_d,self.avance,self.desemp,self.jefes = procesar(archivo.name)
             ##aqui pantalla de usuarios, el save se hará solo si es OC
             # save(self.ROCE,self.OA,self.historial,self.avance)
             if type(self.ROCE) != list:
@@ -60,6 +60,7 @@ class aplicacion(tk.Frame):
                 #definir funcion para crear desplegables a partir de la elección del usuario en su tipo de usuario
                 def eleccion(evento):
                     t_usuario = evento.widget.get()
+                    self.el_usuario = evento.widget.get() #variable para identificar la información a desplegar más adelante en las tablas de turnos y desempeño
                     if t_usuario == 'Regional':
                         br = self.pack_slaves()#limpiar interfaz
                         if len(br)>2:
@@ -105,7 +106,7 @@ class aplicacion(tk.Frame):
         contra = self.contras.get()
         if contra == 'contraseñaOC':
             self.edd = 'Todos'
-            save(self.ROCE,self.OA,self.historial,self.avance,self.desemp)
+            save(self.ROCE,self.OA,self.historial,self.avance,self.desemp,self.jefes)
             br = self.pack_slaves()#limpiar interfaz
             for val in br:
                 val.destroy()
@@ -249,13 +250,14 @@ class aplicacion(tk.Frame):
         li_des.pack()
         b3 = tk.Button(self.NV, text ="Filtrar", command = self.f_per)
         b3.pack()  
-        
-        filtro2 = self.avance.loc[self.avance['Equipo']==equipos[pro]]
-        filtro2 = filtro2.loc[:,['Programa','Porcentaje']]
-        tk.Label(self.NV, text='Avance de revisión del equipo: ').pack()
-        AV = tk.Label(self.NV, text=filtro2.to_string())
-        AV.config(font=("Courier", 10))
-        AV.pack()
+        #sino es OC el usuario no tiene caso mostrar esto
+        if self.el_usuario == 'OC':
+            filtro2 = self.avance.loc[self.avance['Equipo']==equipos[pro]]
+            filtro2 = filtro2.loc[:,['Programa','Porcentaje']]
+            tk.Label(self.NV, text='Avance de revisión del equipo: ').pack()
+            AV = tk.Label(self.NV, text=filtro2.to_string())
+            AV.config(font=("Courier", 10))
+            AV.pack()
         tk.Label(self.NV, text=self.texto_in).pack()
     
     def consul1(self):
@@ -315,10 +317,17 @@ class aplicacion(tk.Frame):
         tab.insert(tk.INSERT, filtro1.to_string())
         tab.pack()
         #aquí condicional par que sino son de OC no se despliegue la informacion de desempeño
-        #comienza filtro para desplegar desempeño de responsable revisor
-        filtro2 = self.desemp.loc[self.desemp['usuario']==perso]
-        tk.Label(self.NV, text='Desempeño en revisiones').pack()
-        tk.Label(self.NV, text=filtro2.to_string()).pack()
+        if self.el_usuario == 'OC':
+            excluir = ['LILIANA AVILA LOPEZ','NALLELY BECERRIL DAVILA',
+                       'ALEXEI PRADEL HERNANDEZ']
+            #comienza filtro para desplegar desempeño de responsable revisor o jefe
+            if perso not in excluir:
+                filtro2 = self.desemp.loc[self.desemp['usuario']==perso]
+                tk.Label(self.NV, text='Desempeño en revisiones').pack()
+            if perso in excluir:
+                filtro2 = self.jefes.loc[self.jefes['usuario']==perso]
+                tk.Label(self.NV, text='Desempeño en designaciones').pack()
+            tk.Label(self.NV, text=filtro2.to_string()).pack()
         #boton para regresar
         brt1 = tk.Button(self.NV, text ="Regresar", command = self.consul1)
         brt1.pack()
