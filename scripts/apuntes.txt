@@ -6,7 +6,4 @@ Queda pendiente entonces editar esa parte del filtrado, removiendo los estatus d
 aclaración de informacion derivado de OC.
 
 
-Pendiente también hacer cálculo de días que han pasado para jefes en asignar 
-los cuestionarios a los responsables revisores
-
 Pendiente la cuestión estética
