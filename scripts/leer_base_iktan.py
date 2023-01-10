@@ -410,8 +410,10 @@ def procesar(documento):
                 if ultimoOC:
                     n_revisiones.append(ultimoOC)
             # print(len(fechas),len(n_revisiones),sum(n_revisiones)) #los len no son iguales porque hay más revisiones y el numero de aquí solo representa la cantidad de ellas, mientras que las fechas es una tupla por revision
-            control['promedio_dias_revision'].append(sum(fechas) / len(fechas) if len(fechas)>0 else 0)
-            control['prom_revisiones_por_cuestionario'].append(sum(n_revisiones) / len(n_revisiones) if len(n_revisiones)>0 else 0)
+            promedio_rev=sum(fechas) / len(fechas) if len(fechas)>0 else 0
+            prom_por_cues = sum(n_revisiones) / len(n_revisiones) if len(n_revisiones)>0 else 0
+            control['promedio_dias_revision'].append(round(promedio_rev,2))
+            control['prom_revisiones_por_cuestionario'].append(round(prom_por_cues,2))
         #ahora conseguir métricas para los jefes
         if usuario in excluir:
             folios = gen_jef.loc[gen_jef['Usuario']==usuario]#cuestionarios donde participa el jefe
@@ -439,7 +441,8 @@ def procesar(documento):
                         fechas.append(resta.days) 
                     c += 1
             # print(usuario,fechas)
-            control_jefes['dias_prom_asig_cuestionario'].append(sum(fechas) / len(fechas) if len(fechas)>0 else 0)
+            promedio_asig = sum(fechas) / len(fechas) if len(fechas)>0 else 0
+            control_jefes['dias_prom_asig_cuestionario'].append(round(promedio_asig,2))
             control_jefes['dias_max_asig_cuestionario'].append(max(fechas))
                 
     desempe = pd.DataFrame(control)

@@ -40,8 +40,12 @@ class aplicacion(tk.Frame):
         #crear el marco---propósitos estéticos
         self.frame1 = tk.Frame(self,height=250, width=400, bg='#def3f6')
         self.frame1.pack()
-        lab = tk.Label(self.frame1, text=self.texto_in,font=('Helvetica 8'),bg='#def3f6')
-        lab.pack(side=tk.TOP,anchor="w")
+        lab = tk.Label(self.frame1,
+                       text=self.texto_in,
+                       font=('Helvetica 8'),
+                       bg='#def3f6',
+                       fg='red')
+        lab.pack(side=tk.BOTTOM,anchor="w")
         l2 =tk.Label(self.frame1, 
                      text='Iniciar consulta',
                      fg='white',
@@ -118,7 +122,10 @@ class aplicacion(tk.Frame):
                                   text ="Seleccionar",
                                   command = self.retrasos)
                         b2.pack(pady=20)
-                        tk.Label(self.frame1, text=self.texto_in,bg='#def3f6').pack()
+                        tk.Label(self.frame1,
+                                 text=self.texto_in,
+                                 bg='#def3f6',
+                                 fg='red').pack()
                     
                     if t_usuario == 'OC':
                         br = self.frame1.pack_slaves()#limpiar interfaz
@@ -128,14 +135,18 @@ class aplicacion(tk.Frame):
                         l2 = tk.Label(self.frame1, text="Introduce la contraseña ",bg='#def3f6')
                         l2.pack(fill='x')
                         contra = tk.Entry(self.frame1,
-                                          textvariable=self.contras
+                                          textvariable=self.contras,
+                                          show="*"
                                           )
                         contra.pack()
                         b2=tk.Button(self.frame1,
                                   text ="Continuar",
                                   command = self.val_con)
                         b2.pack(pady=20)
-                        tk.Label(self.frame1, text=self.texto_in,bg='#def3f6').pack()
+                        tk.Label(self.frame1,
+                                 text=self.texto_in,
+                                 bg='#def3f6',
+                                 fg='red').pack()
                 users.bind("<<ComboboxSelected>>", eleccion)
                 
         except Exception as e:
@@ -189,7 +200,10 @@ class aplicacion(tk.Frame):
             #agregar boton de regreso
             btr = tk.Button(self.frame1, text ="Regresar", command = self.utilidades)
             btr.pack(anchor='w') 
-            tk.Label(self.frame1, text=self.texto_in,bg='#def3f6').pack()
+            tk.Label(self.frame1,
+                     text=self.texto_in,
+                     bg='#def3f6',
+                     fg='red').pack()
         else:
             texto = 'Contraseña incorrecta'
             messagebox.showinfo(
@@ -273,7 +287,10 @@ class aplicacion(tk.Frame):
         #agregar boton de regreso
         btr = tk.Button(self.frame1, text ="Regresar", command = self.utilidades)
         btr.pack(anchor='w') 
-        tk.Label(self.frame1, text=self.texto_in,bg='#def3f6').pack()
+        tk.Label(self.frame1,
+                 text=self.texto_in,
+                 bg='#def3f6',
+                 fg='red').pack()
         
     def consul(self):
         self.NV = tk.Toplevel(self,bg='#def3f6')
@@ -286,8 +303,8 @@ class aplicacion(tk.Frame):
                       bg='#0099cc')
         l1.pack(fill='x')
         # self.NV.geometry('900x700')
-        tk.Label(self.frame1,text='Fecha de corte: '+self.fecha_d[:11],
-                 bg='#def3f6').pack(anchor='w')
+        tk.Label(self.frame1,text='Fecha de corte: '+self.fecha_d,
+                 bg='#def3f6').pack(anchor='w')#self.fecha_d[:11]
         
         pro = self.despl.get() #esta se usa con la variable equipos
         equipos = {
@@ -358,7 +375,7 @@ class aplicacion(tk.Frame):
                       fg='white',
                       bg='#0099cc')
         l1.pack(fill='x')
-        tk.Label(self.frame1,text='Fecha de corte: '+self.fecha_d[:11],bg='#def3f6').pack()
+        tk.Label(self.frame1,text='Fecha de corte: '+self.fecha_d,bg='#def3f6').pack()
         pro = self.despl.get() #esta se usa con la variable equipos
         equipos = {
             'CNSIPEE':'Integración de Información',
