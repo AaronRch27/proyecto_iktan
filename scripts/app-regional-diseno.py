@@ -327,12 +327,21 @@ class aplicacion(tk.Frame):
         self.filtro = filtro.loc[:,['Proyecto',
                                'Módulo','Entidad',
                                'Registro','Estatus',
-                               'Usuario']]
+                               'Usuario','dias_en_OC',
+                               'dias_en_rev_OC']]
         # tk.Label(self.frame1, text="Los módulos que tiene pendientes el equipo que revisa tu proyecto son los siguientes: ",
         #          bg='#def3f6').pack(pady=20,padx=15)
-        tab = tk.Text(self.frame1,width=100)
-        tab.insert(tk.INSERT, self.filtro.to_string())
-        tab.pack(pady=10)
+        # tab = tk.Text(self.frame1,width=100)
+        # tab.insert(tk.INSERT, self.filtro.to_string())
+        # tab.pack(pady=10)
+        arbol = ttk.Treeview(self.frame1)
+        arbol['columns'] = list(self.filtro.columns)
+        for x in list(self.filtro.columns):
+            arbol.column(x, width=100 )
+            arbol.heading(x, text=x)
+        for imm in range(len(self.filtro)):
+            arbol.insert('', tk.END, values=(list(self.filtro.iloc[imm,:])))
+        arbol.pack()
         self.A.append(1)
         tk.Label(self.frame1, 
                  text='Filtros de consulta',
@@ -397,12 +406,21 @@ class aplicacion(tk.Frame):
         self.filtro = filtro.loc[:,['Proyecto',
                                'Módulo','Entidad',
                                'Registro','Estatus',
-                               'Usuario']]
+                               'Usuario','dias_en_OC',
+                               'dias_en_rev_OC']]
         tk.Label(self.frame1, text="Los módulos que tiene pendientes el equipo que revisa tu proyecto son los siguientes: ",
                  bg='#def3f6').pack()
-        tab = tk.Text(self.frame1,width=100)
-        tab.insert(tk.INSERT, self.filtro.to_string())
-        tab.pack(pady=10)
+        # tab = tk.Text(self.frame1,width=100)
+        # tab.insert(tk.INSERT, self.filtro.to_string())
+        # tab.pack(pady=10)
+        arbol = ttk.Treeview(self.frame1)
+        arbol['columns'] = list(self.filtro.columns)
+        for x in list(self.filtro.columns):
+            arbol.column(x, width=100 )
+            arbol.heading(x, text=x)
+        for imm in range(len(self.filtro)):
+            arbol.insert('', tk.END, values=(list(self.filtro.iloc[imm,:])))
+        arbol.pack()
         self.A.append(1)
         li_des = tk.ttk.Combobox(self.frame1,
             state='readonly',
@@ -426,9 +444,17 @@ class aplicacion(tk.Frame):
         filtro1 = filtro1.set_index('Turno')
         tk.Label(self.frame1, text="Los módulos que revisa la persona seleccionada son los siguientes: ",
                  bg='#def3f6').pack()
-        tab = tk.Text(self.frame1,width=100)
-        tab.insert(tk.INSERT, filtro1.to_string())
-        tab.pack()
+        # tab = tk.Text(self.frame1,width=100)
+        # tab.insert(tk.INSERT, filtro1.to_string())
+        # tab.pack()
+        arbol = ttk.Treeview(self.frame1)
+        arbol['columns'] = list(filtro1.columns)
+        for x in list(filtro1.columns):
+            arbol.column(x, width=100 )
+            arbol.heading(x, text=x)
+        for imm in range(len(filtro1)):
+            arbol.insert('', tk.END, values=(list(filtro1.iloc[imm,:])))
+        arbol.pack()
         #aquí condicional par que sino son de OC no se despliegue la informacion de desempeño
         if self.el_usuario == 'OC':
             excluir = ['LILIANA AVILA LOPEZ','NALLELY BECERRIL DAVILA',
@@ -458,7 +484,7 @@ class aplicacion(tk.Frame):
         if 'Revisión OC' in texto or 'Pendiente' in texto:
             res = 'Pendiente'
         elif 'FueraT' in texto:
-            res = 'En revisión'
+            res = 'Retraso en asignación'
         else:
             res = 'En revisión'
         return res

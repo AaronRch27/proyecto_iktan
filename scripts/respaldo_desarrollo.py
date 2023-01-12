@@ -198,8 +198,9 @@ rt = pd.DataFrame(respuesta)
 #generar orden de atención
 test = df.copy()
 valores1 = [f'Revisión OC ({x})' for x in range(1,10)]
+#se comenta aclaracipon de informacion oc porque este estatus no sirve para los turnos 
 v1c = [f'Aclaración de información OC ({x})' for x in range(1,10)]
-valores1 += v1c
+# valores1 += v1c
 test['cont'] = [i for i in range(df.shape[0])]
 testix = test.groupby(['Folio'])['cont'].transform(max) == test['cont']
 ntest = test[testix]
@@ -217,12 +218,29 @@ del ntest['Dias_inicio_RevOC'] #porque si ya llegó aquí, no tiene caso mostrar
 #ahora filtrar por miembros del equipo
 fila = 0
 # borrar = []
+nndiasOC = [] #conteo de días que tiene un cuestionario desde su llegada a oficinas centrales para asignacion y revision
+nndiasrevOC = []#conteo de dias que tiene un cuestionario luego de ser asignado por jefe de equipo
 ntest = ntest.reset_index(drop=True)
 for val in list(ntest['Usuario']):
     if val not in plantilla:
         if 'Revisión OC' in ntest.loc[fila,'Estatus']:
             ntest.loc[fila,'Estatus'] = 'Pendiente' 
             ntest.loc[fila,'Usuario'] = 'Por asignar'
+        #como no es usuario de los revisores ni jefes de equipo, se interpreta que su cuestionario no ha sido asignado para revision
+        docc = hoy - ntest.loc[fila,'Fecha'] 
+        nndiasOC.append(docc.days)
+        nndiasrevOC.append('No Asignado')
+    if val in plantilla:
+        #de llegar aquí quiere decir que ya ha sido asignado el cuestionario y habría que revisar la observacion pra ver quien lo tiene a revision
+        historial_folio=df[df['Folio']==ntest.loc[fila,'Folio']]
+        historial_folio = historial_folio.reset_index(drop=True)
+        tam = historial_folio.shape
+        penultimo_stat = historial_folio.loc[tam[0]-2,'Registro']
+        penultimo_stat = pd.to_datetime(penultimo_stat,format="%d/%m/%Y %H:%M:%S")
+        dife = hoy - penultimo_stat
+        nndiasOC.append(dife.days)
+        dife = hoy - ntest.loc[fila,'Fecha'] 
+        nndiasrevOC.append(dife.days)
     retraso = hoy - ntest.loc[fila,'Fecha'] 
     if retraso.days > 5:
         #si hay retraso no se cambia al usuario
@@ -231,6 +249,8 @@ for val in list(ntest['Usuario']):
         # borrar.append(fila)
     fila += 1
 del ntest['Fecha']
+ntest['dias_en_OC'] = nndiasOC
+ntest['dias_en_rev_OC'] = nndiasrevOC
 ntest = pd.DataFrame(ntest)
 #guardar archivo
 # ntest.to_csv('Orden_de_atencion_por_fecha_de_llegada.csv',index=False,encoding='utf-8-sig')
