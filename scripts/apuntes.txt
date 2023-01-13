@@ -1,6 +1,7 @@
 
 Falta revisar el tema de la identificación de responsables revisoress desde estatus.
 
+Meter un filtro de perfil para eliminar los de administrador 
 
 Requerimentos de equipo de Control y Logisticia.
 
