@@ -13,7 +13,7 @@ hoy =  datetime.now()
 
 #leer archivo descargado de iktan
 
-documento = pd.read_excel('xIktan_20220727034229952_reporteSegumiento.xlsx')
+documento = pd.read_excel('xIktan_20220907015014929_reporteSegumiento.xlsx')
 
 #formar nuevo dataframe
 rep = documento.fillna('vacio') #llenar espacios vacios con la palabra 'vacio'
@@ -402,7 +402,8 @@ control = {
     'equipo':[],
     'cuestionarios_revisados':[],
     'promedio_dias_revision':[],
-    'prom_revisiones_por_cuestionario':[]
+    'prom_revisiones_por_cuestionario':[],
+    'Max_dias_en_rev':[]
     }
 control_jefes = {
     'usuario':[],
@@ -430,13 +431,15 @@ for usuario in plantilla: #itearar por cada usuario en el directorio de OC
             ultimoOC = 0 #conteo de  revisiones
             c = 0
             for proceso in list(folio['Usuario']):
-                if usuario == proceso:
+                if usuario == proceso and 'reconsulta' not in list(folio['Estatus'])[c]:
                     f_ini = folio['Registro'][c-1]
                     f_term = folio['Registro'][c]
                     inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
                     term = datetime.strptime(f_term,"%d/%m/%Y %H:%M:%S")
                     resta = term-inicio
                     fechas.append(resta.days) 
+                    if usuario == 'JOSE ANTONIO CHAVEZ CASTILLO' and resta.days>15:
+                        print(cuestionario,'77777777', resta,inicio,term)
                     ultimoOC += 1
                 c += 1
                    
@@ -450,6 +453,9 @@ for usuario in plantilla: #itearar por cada usuario en el directorio de OC
         # print(usuario,len(fechas),fechas,len(n_revisiones),sum(n_revisiones)) #los len no son iguales porque hay más revisiones y el numero de aquí solo representa la cantidad de ellas, mientras que las fechas es una tupla por revision
         control['promedio_dias_revision'].append(sum(fechas) / len(fechas) if len(fechas)>0 else 0)
         control['prom_revisiones_por_cuestionario'].append(sum(n_revisiones) / len(n_revisiones) if len(n_revisiones)>0 else 0)
+        control['Max_dias_en_rev'].append(max(fechas) if fechas else 'NA')
+        
+            
     #ahora conseguir métricas para los jefes
     if usuario in excluir:
         folios = gen_jef.loc[gen_jef['Usuario']==usuario]#cuestionarios donde participa el jefe

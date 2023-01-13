@@ -466,11 +466,13 @@ class aplicacion(tk.Frame):
                        'ALEXEI PRADEL HERNANDEZ']
             #comienza filtro para desplegar desempeño de responsable revisor o jefe
             if perso not in excluir:
-                filtro2 = self.desemp.loc[self.desemp['usuario']==perso]
+                filtro2 = self.desemp[self.desemp['usuario']==perso].squeeze()
+                # filtro2 = self.desemp.loc[self.desemp['usuario']==perso]
                 tk.Label(self.frame1, text='Desempeño en revisiones',
                          bg='#def3f6').pack()
             if perso in excluir:
-                filtro2 = self.jefes.loc[self.jefes['usuario']==perso]
+                filtro2 = self.jefes[self.jefes['usuario']==perso].squeeze()
+                # filtro2 = self.jefes.loc[self.jefes['usuario']==perso]
                 tk.Label(self.frame1, text='Desempeño en designaciones',
                          bg='#def3f6').pack()
             tk.Label(self.frame1, text=filtro2.to_string(),

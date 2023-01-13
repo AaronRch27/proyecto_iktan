@@ -388,7 +388,8 @@ def procesar(documento):
         'equipo':[],
         'cuestionarios_revisados':[],
         'promedio_dias_revision':[],
-        'prom_revisiones_por_cuestionario':[]
+        'prom_revisiones_por_cuestionario':[],
+        'Max_dias_en_rev':[]
         }
     control_jefes = {
         'usuario':[],
@@ -416,7 +417,7 @@ def procesar(documento):
                 ultimoOC = 0 #conteo de  revisiones
                 c = 0
                 for proceso in list(folio['Usuario']):
-                    if usuario == proceso:
+                    if usuario == proceso and 'reconsulta' not in list(folio['Estatus'])[c]:
                         f_ini = folio['Registro'][c-1]
                         f_term = folio['Registro'][c]
                         inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
@@ -433,6 +434,7 @@ def procesar(documento):
             prom_por_cues = sum(n_revisiones) / len(n_revisiones) if len(n_revisiones)>0 else 0
             control['promedio_dias_revision'].append(round(promedio_rev,2))
             control['prom_revisiones_por_cuestionario'].append(round(prom_por_cues,2))
+            control['Max_dias_en_rev'].append(max(fechas) if fechas else 'NA')
         #ahora conseguir métricas para los jefes
         if usuario in excluir:
             folios = gen_jef.loc[gen_jef['Usuario']==usuario]#cuestionarios donde participa el jefe
