@@ -1,12 +1,6 @@
 
 Falta revisar el tema de la identificación de responsables revisoress desde estatus.
 
-Queda pendiente entonces editar esa parte del filtrado, removiendo los estatus de
-aclaración de informacion derivado de OC.
-
-Agregar dos columnas en tabla de turnos; una con días hábiles de revisión y otra 
-de días hábiles desde que llegó a OC
-
 hacer word de indicadores de desmepeño
 
 Meter métrica de días de revisión a revisores.  

@@ -322,9 +322,9 @@ class aplicacion(tk.Frame):
         #sobrescribir estatus para ahorrar espacio
         filtro['Estatus'] = [self.mod_text(i) for i in list(filtro['Estatus'])] 
         filtro['Registro'] = [i[:11] for i in list(filtro['Registro'])]
-        filtro = filtro.set_index('Turno')
+        # filtro = filtro.set_index('Turno')
         filtro = filtro.loc[filtro['Región'] == self.edd] if self.edd!='Todos' else filtro
-        self.filtro = filtro.loc[:,['Proyecto',
+        self.filtro = filtro.loc[:,['Turno','Proyecto',
                                'Módulo','Entidad',
                                'Registro','Estatus',
                                'Usuario','dias_en_OC',
@@ -336,6 +336,7 @@ class aplicacion(tk.Frame):
         # tab.pack(pady=10)
         arbol = ttk.Treeview(self.frame1)
         arbol['columns'] = list(self.filtro.columns)
+        arbol.column('#0', width=0, stretch=tk.NO)#borrar primera columna porque sale vacia      
         for x in list(self.filtro.columns):
             arbol.column(x, width=100 )
             arbol.heading(x, text=x)
@@ -401,9 +402,9 @@ class aplicacion(tk.Frame):
         #sobrescribir estatus para ahorrar espacio
         filtro['Estatus'] = [self.mod_text(i) for i in list(filtro['Estatus'])] 
         filtro['Registro'] = [i[:11] for i in list(filtro['Registro'])]
-        filtro = filtro.set_index('Turno')
+        # filtro = filtro.set_index('Turno')
         filtro = filtro.loc[filtro['Región'] == self.edd] if self.edd!='Todos' else filtro
-        self.filtro = filtro.loc[:,['Proyecto',
+        self.filtro = filtro.loc[:,['Turno','Proyecto',
                                'Módulo','Entidad',
                                'Registro','Estatus',
                                'Usuario','dias_en_OC',
@@ -415,6 +416,7 @@ class aplicacion(tk.Frame):
         # tab.pack(pady=10)
         arbol = ttk.Treeview(self.frame1)
         arbol['columns'] = list(self.filtro.columns)
+        arbol.column('#0', width=0, stretch=tk.NO)
         for x in list(self.filtro.columns):
             arbol.column(x, width=100 )
             arbol.heading(x, text=x)
@@ -440,8 +442,10 @@ class aplicacion(tk.Frame):
             sl.destroy()
         filtro1 = self.filtro.loc[self.filtro['Usuario']==perso]
         turnos = [i for i in range(1,len(list(filtro1['Usuario']))+1)]
-        filtro1['Turno'] = turnos
-        filtro1 = filtro1.set_index('Turno')
+        # filtro1['Turno'] = turnos
+        filtro1.pop('Turno')
+        filtro1.insert(loc=0,column='Turno',value=turnos)
+        # filtro1 = filtro1.set_index('Turno')
         tk.Label(self.frame1, text="Los módulos que revisa la persona seleccionada son los siguientes: ",
                  bg='#def3f6').pack()
         # tab = tk.Text(self.frame1,width=100)
@@ -449,6 +453,7 @@ class aplicacion(tk.Frame):
         # tab.pack()
         arbol = ttk.Treeview(self.frame1)
         arbol['columns'] = list(filtro1.columns)
+        arbol.column('#0', width=0, stretch=tk.NO)
         for x in list(filtro1.columns):
             arbol.column(x, width=100 )
             arbol.heading(x, text=x)
