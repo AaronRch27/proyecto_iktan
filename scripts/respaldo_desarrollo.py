@@ -13,7 +13,7 @@ hoy =  datetime.now()
 
 #leer archivo descargado de iktan
 
-documento = pd.read_excel('xIktan_20220907015014929_reporteSegumiento.xlsx')
+documento = pd.read_excel('xIktan_2023012401294355_reporteSegumiento.xlsx')
 
 #formar nuevo dataframe
 rep = documento.fillna('vacio') #llenar espacios vacios con la palabra 'vacio'
@@ -127,13 +127,13 @@ df.insert(4,'Región',reg,allow_duplicates=False)
 
 #hacer variables de fechas para revision oc y recuperacion de firmas y sellos
 f_corte = {#cada llave tiene una lista con dos valores, el primero es la fecha de inicio a revision oc del cronograma y el segundo es la fecha de conclusion de recuperacion de firma 
-    'CNSIPEE':['24/02/2022 00:00:00','10/06/2022 00:00:00'],
-    'CNGE': ['09/05/2022 00:00:00','08/07/2022 00:00:00'],
-    'CNSPE':['30/05/2022 00:00:00','29/07/2022 00:00:00'],
-    'CNPJE':['13/06/2022 00:00:00','12/08/2022 00:00:00'],
-    'CNIJE':['27/06/2022 00:00:00','12/08/2022 00:00:00'],
-    'CNDHE':['15/08/2022 00:00:00','07/10/2022 00:00:00'],
-    'vacio':['01/01/2022 00:00:00','01/01/2022 00:00:00']
+    'CNSIPEE':['17/04/2023 00:00:00','30/06/2023 00:00:00'],
+    'CNGE': ['24/04/2023 00:00:00','21/07/2023 00:00:00'],
+    'CNSPE':['12/06/2023 00:00:00','31/08/2023 00:00:00'],
+    'CNPJE':['13/06/2022 00:00:00','12/08/2022 00:00:00'],#no actualizado
+    'CNIJE':['27/06/2022 00:00:00','12/08/2022 00:00:00'],#no actualizado
+    'CNDHE':['15/08/2022 00:00:00','07/10/2022 00:00:00'],#no actualizado
+    'vacio':['01/01/2022 00:00:00','01/01/2022 00:00:00']#no actualizado
     }
 d_OC = []
 d_firma = []
@@ -210,7 +210,7 @@ ntest = ntest[ntest.Estatus.isin(valores1)] #aquí ya está el dataframe con los
 ntest['Fecha'] =  pd.to_datetime(ntest['Registro'],format="%d/%m/%Y %H:%M:%S")
 ntest = ntest.sort_values(by=['Fecha'])
 #borrar columnas
-del ntest['Observación']
+# del ntest['Observación']
 del ntest['Contador de días']
 del ntest['cont']
 
@@ -218,6 +218,8 @@ del ntest['Dias_inicio_RevOC'] #porque si ya llegó aquí, no tiene caso mostrar
 #ahora filtrar por miembros del equipo
 fila = 0
 # borrar = []
+excluir = ['LILIANA AVILA LOPEZ','NALLELY BECERRIL DAVILA',
+           'ALEXEI PRADEL HERNANDEZ'] #jefes de equipo que designan
 nndiasOC = [] #conteo de días que tiene un cuestionario desde su llegada a oficinas centrales para asignacion y revision
 nndiasrevOC = []#conteo de dias que tiene un cuestionario luego de ser asignado por jefe de equipo
 ntest = ntest.reset_index(drop=True)
@@ -231,7 +233,14 @@ for val in list(ntest['Usuario']):
         nndiasOC.append(docc.days)
         nndiasrevOC.append('No Asignado')
     if val in plantilla:
+        ntest.loc[fila,'Estatus'] = 'En revisión'  #dado que el equipo lo tiene debe cambiar este estatus a revision
         #de llegar aquí quiere decir que ya ha sido asignado el cuestionario y habría que revisar la observacion pra ver quien lo tiene a revision
+        if val in excluir:
+            observacion = ntest.loc[fila,'Observación']
+            div_ob = observacion.split(':')
+            revisor = div_ob[-1]
+            # ntest.loc[fila,'Estatus'] = 'En revisión' 
+            ntest.loc[fila,'Usuario'] = revisor
         historial_folio=df[df['Folio']==ntest.loc[fila,'Folio']]
         historial_folio = historial_folio.reset_index(drop=True)
         tam = historial_folio.shape
@@ -249,6 +258,7 @@ for val in list(ntest['Usuario']):
         # borrar.append(fila)
     fila += 1
 del ntest['Fecha']
+del ntest['Observación']
 ntest['dias_en_OC'] = nndiasOC
 ntest['dias_en_rev_OC'] = nndiasrevOC
 ntest = pd.DataFrame(ntest)
@@ -456,38 +466,38 @@ for usuario in plantilla: #itearar por cada usuario en el directorio de OC
         control['Max_dias_en_rev'].append(max(fechas) if fechas else 'NA')
         
             
-    #ahora conseguir métricas para los jefes
-    if usuario in excluir:
-        folios = gen_jef.loc[gen_jef['Usuario']==usuario]#cuestionarios donde participa el jefe
-        cuestionarios_asignados = list(folios['Folio'].unique())
-        #conseguir el equipo del usuario
-        for equpo in equipos_nom:
-            if usuario in equipos_nom[equpo]:
-                control_jefes['equipo'].append(equpo)
-        # print(usuario,len(cuestionarios_revisados))
-        control_jefes['usuario'].append(usuario)
-        control_jefes['cuestionarios_asignados'].append(len(cuestionarios_asignados))
-        fechas = []
-        for cuestionario in cuestionarios_asignados:
-            folio = general.loc[general['Folio']==cuestionario]#solo con los folios de un cuestionario--es base pequeña
-            folio = folio.reset_index(drop=True)
-            c = 0
-            revi = list(folio['Estatus'])
-            for proceso in list(folio['Usuario']):
-                if usuario == proceso and revi[c] in revOC:#este filtro es para solo seleccionar al usuario cuando hizo un estatus de asignacion revision OC numero que sea
-                    f_ini = folio['Registro'][c-1]
-                    f_term = folio['Registro'][c]
-                    inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
-                    term = datetime.strptime(f_term,"%d/%m/%Y %H:%M:%S")
-                    resta = term-inicio
-                    fechas.append(resta.days) 
-                c += 1
-        # print(usuario,fechas)
-        control_jefes['dias_prom_asig_cuestionario'].append(sum(fechas) / len(fechas) if len(fechas)>0 else 0)
-        control_jefes['dias_max_asig_cuestionario'].append(max(fechas))
+#     #ahora conseguir métricas para los jefes
+#     if usuario in excluir:
+#         folios = gen_jef.loc[gen_jef['Usuario']==usuario]#cuestionarios donde participa el jefe
+#         cuestionarios_asignados = list(folios['Folio'].unique())
+#         #conseguir el equipo del usuario
+#         for equpo in equipos_nom:
+#             if usuario in equipos_nom[equpo]:
+#                 control_jefes['equipo'].append(equpo)
+#         # print(usuario,len(cuestionarios_revisados))
+#         control_jefes['usuario'].append(usuario)
+#         control_jefes['cuestionarios_asignados'].append(len(cuestionarios_asignados))
+#         fechas = []
+#         for cuestionario in cuestionarios_asignados:
+#             folio = general.loc[general['Folio']==cuestionario]#solo con los folios de un cuestionario--es base pequeña
+#             folio = folio.reset_index(drop=True)
+#             c = 0
+#             revi = list(folio['Estatus'])
+#             for proceso in list(folio['Usuario']):
+#                 if usuario == proceso and revi[c] in revOC:#este filtro es para solo seleccionar al usuario cuando hizo un estatus de asignacion revision OC numero que sea
+#                     f_ini = folio['Registro'][c-1]
+#                     f_term = folio['Registro'][c]
+#                     inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
+#                     term = datetime.strptime(f_term,"%d/%m/%Y %H:%M:%S")
+#                     resta = term-inicio
+#                     fechas.append(resta.days) 
+#                 c += 1
+#         # print(usuario,fechas)
+#         control_jefes['dias_prom_asig_cuestionario'].append(sum(fechas) / len(fechas) if len(fechas)>0 else 0)
+#         control_jefes['dias_max_asig_cuestionario'].append(max(fechas))
             
-desempe = pd.DataFrame(control)
-desem_jefes = pd.DataFrame(control_jefes)
+# desempe = pd.DataFrame(control)
+# desem_jefes = pd.DataFrame(control_jefes)
         
                 
                 

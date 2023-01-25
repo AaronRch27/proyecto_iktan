@@ -76,82 +76,85 @@ class aplicacion(tk.Frame):
             ##aqui pantalla de usuarios, el save se hará solo si es OC
             # save(self.ROCE,self.OA,self.historial,self.avance)
             if type(self.ROCE) != list:
-                # imagen= tk.PhotoImage(file='usuario.png')
-                br = self.pack_slaves()#limpiar interfaz
-                for val in br:
-                    val.destroy()
-                self.frame1 = tk.Frame(self,height=250, width=400, bg='#def3f6')
-                self.frame1.pack()
-                l1 = tk.Label(self.frame1, text="Perfil operativo ",
-                              fg='white',
-                              bg='#0099cc')
-                l1.pack(fill='x',ipadx=150)
-                tk.Label(self.frame1,
-                         # image=imagen,
-                         text='USUARIO',
-                         # compound=tk.LEFT,
-                         fg='#0099cc',
-                         bg='#def3f6'
-                         ).pack()
-                users = ttk.Combobox(self.frame1,
-                    state='readonly',
-                    textvariable=self.user,
-                    values=['Regional','OC']
-                    )
-                users.pack()
-                tk.Label(self.frame1,text='',bg='#def3f6').pack(pady=65)#este es solo para darle altura a la ventana 
-                
-                #definir funcion para crear desplegables a partir de la elección del usuario en su tipo de usuario
-                def eleccion(evento):
-                    t_usuario = evento.widget.get()
-                    self.el_usuario = evento.widget.get() #variable para identificar la información a desplegar más adelante en las tablas de turnos y desempeño
-                    if t_usuario == 'Regional':
-                        br = self.frame1.pack_slaves()#limpiar interfaz
-                        if len(br)>2:
-                            for val in br[3:]:
-                                val.destroy()
-                        l2 = tk.Label(self.frame1, text="Selecciona tu región ",bg='#def3f6')
-                        l2.pack(fill='x')
-                        edos = ttk.Combobox(self.frame1,
-                            state='readonly',
-                            textvariable=self.estado,
-                            values=list(self.historial['Región'].unique())
-                            )
-                        edos.pack()                    
-                        b2=tk.Button(self.frame1,
-                                  text ="Seleccionar",
-                                  command = self.retrasos)
-                        b2.pack(pady=20)
-                        tk.Label(self.frame1,
-                                 text=self.texto_in,
-                                 bg='#def3f6',
-                                 fg='red').pack()
-                    
-                    if t_usuario == 'OC':
-                        br = self.frame1.pack_slaves()#limpiar interfaz
-                        if len(br)>2:
-                            for val in br[3:]:
-                                val.destroy()
-                        l2 = tk.Label(self.frame1, text="Introduce la contraseña ",bg='#def3f6')
-                        l2.pack(fill='x')
-                        contra = tk.Entry(self.frame1,
-                                          textvariable=self.contras,
-                                          show="*"
-                                          )
-                        contra.pack()
-                        b2=tk.Button(self.frame1,
-                                  text ="Continuar",
-                                  command = self.val_con)
-                        b2.pack(pady=20)
-                        tk.Label(self.frame1,
-                                 text=self.texto_in,
-                                 bg='#def3f6',
-                                 fg='red').pack()
-                users.bind("<<ComboboxSelected>>", eleccion)
+                self.perfil_operativo_fun()
                 
         except Exception as e:
             tk.Label(self.frame1, text="Error en la lectura, selecciona otro archivo ").pack()
             tk.Label(self.frame1, text=e).pack()
+    
+    def perfil_operativo_fun(self):
+        # imagen= tk.PhotoImage(file='usuario.png')
+        br = self.pack_slaves()#limpiar interfaz
+        for val in br:
+            val.destroy()
+        self.frame1 = tk.Frame(self,height=250, width=400, bg='#def3f6')
+        self.frame1.pack()
+        l1 = tk.Label(self.frame1, text="Perfil operativo ",
+                      fg='white',
+                      bg='#0099cc')
+        l1.pack(fill='x',ipadx=150)
+        tk.Label(self.frame1,
+                 # image=imagen,
+                 text='USUARIO',
+                 # compound=tk.LEFT,
+                 fg='#0099cc',
+                 bg='#def3f6'
+                 ).pack()
+        users = ttk.Combobox(self.frame1,
+            state='readonly',
+            textvariable=self.user,
+            values=['Regional','OC']
+            )
+        users.pack()
+        tk.Label(self.frame1,text='',bg='#def3f6').pack(pady=65)#este es solo para darle altura a la ventana 
+        
+        #definir funcion para crear desplegables a partir de la elección del usuario en su tipo de usuario
+        def eleccion(evento):
+            t_usuario = evento.widget.get()
+            self.el_usuario = evento.widget.get() #variable para identificar la información a desplegar más adelante en las tablas de turnos y desempeño
+            if t_usuario == 'Regional':
+                br = self.frame1.pack_slaves()#limpiar interfaz
+                if len(br)>2:
+                    for val in br[3:]:
+                        val.destroy()
+                l2 = tk.Label(self.frame1, text="Selecciona tu región ",bg='#def3f6')
+                l2.pack(fill='x')
+                edos = ttk.Combobox(self.frame1,
+                    state='readonly',
+                    textvariable=self.estado,
+                    values=list(self.historial['Región'].unique())
+                    )
+                edos.pack()                    
+                b2=tk.Button(self.frame1,
+                          text ="Seleccionar",
+                          command = self.retrasos)
+                b2.pack(pady=20)
+                tk.Label(self.frame1,
+                         text=self.texto_in,
+                         bg='#def3f6',
+                         fg='red').pack()
+            
+            if t_usuario == 'OC':
+                br = self.frame1.pack_slaves()#limpiar interfaz
+                if len(br)>2:
+                    for val in br[3:]:
+                        val.destroy()
+                l2 = tk.Label(self.frame1, text="Introduce la contraseña ",bg='#def3f6')
+                l2.pack(fill='x')
+                contra = tk.Entry(self.frame1,
+                                  textvariable=self.contras,
+                                  show="*"
+                                  )
+                contra.pack()
+                b2=tk.Button(self.frame1,
+                          text ="Continuar",
+                          command = self.val_con)
+                b2.pack(pady=20)
+                tk.Label(self.frame1,
+                         text=self.texto_in,
+                         bg='#def3f6',
+                         fg='red').pack()
+        users.bind("<<ComboboxSelected>>", eleccion)
     
     def val_con(self):
         contra = self.contras.get()
@@ -198,7 +201,7 @@ class aplicacion(tk.Frame):
                      bg='white'
                      ).pack(pady=15,padx=20)
             #agregar boton de regreso
-            btr = tk.Button(self.frame1, text ="Regresar", command = self.utilidades)
+            btr = tk.Button(self.frame1, text ="Regresar", command = self.perfil_operativo_fun)
             btr.pack(anchor='w') 
             tk.Label(self.frame1,
                      text=self.texto_in,
@@ -285,7 +288,7 @@ class aplicacion(tk.Frame):
                  bg='white'
                  ).pack(pady=15,padx=20)
         #agregar boton de regreso
-        btr = tk.Button(self.frame1, text ="Regresar", command = self.utilidades)
+        btr = tk.Button(self.frame1, text ="Regresar", command = self.perfil_operativo_fun)
         btr.pack(anchor='w') 
         tk.Label(self.frame1,
                  text=self.texto_in,
