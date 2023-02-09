@@ -496,7 +496,7 @@ def procesar(documento):
                 # print(usuario,fechas)
                 promedio_asig = sum(fechas) / len(fechas) if len(fechas)>0 else 0
                 control_jefes['dias_prom_asig_cuestionario'].append(round(promedio_asig,2))
-                control_jefes['dias_max_asig_cuestionario'].append(max(fechas))
+                control_jefes['dias_max_asig_cuestionario'].append(max(fechas) if len(fechas)>0 else 'No hay datos suficientes')
                     
         desempe = pd.DataFrame(control)
         desem_jefes = pd.DataFrame(control_jefes)

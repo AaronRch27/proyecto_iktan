@@ -485,38 +485,38 @@ for usuario in plantilla: #itearar por cada usuario en el directorio de OC
         control['Max_dias_en_rev'].append(max(fechas) if fechas else 'NA')
         
             
-#     #ahora conseguir métricas para los jefes
-#     if usuario in excluir:
-#         folios = gen_jef.loc[gen_jef['Usuario']==usuario]#cuestionarios donde participa el jefe
-#         cuestionarios_asignados = list(folios['Folio'].unique())
-#         #conseguir el equipo del usuario
-#         for equpo in equipos_nom:
-#             if usuario in equipos_nom[equpo]:
-#                 control_jefes['equipo'].append(equpo)
-#         # print(usuario,len(cuestionarios_revisados))
-#         control_jefes['usuario'].append(usuario)
-#         control_jefes['cuestionarios_asignados'].append(len(cuestionarios_asignados))
-#         fechas = []
-#         for cuestionario in cuestionarios_asignados:
-#             folio = general.loc[general['Folio']==cuestionario]#solo con los folios de un cuestionario--es base pequeña
-#             folio = folio.reset_index(drop=True)
-#             c = 0
-#             revi = list(folio['Estatus'])
-#             for proceso in list(folio['Usuario']):
-#                 if usuario == proceso and revi[c] in revOC:#este filtro es para solo seleccionar al usuario cuando hizo un estatus de asignacion revision OC numero que sea
-#                     f_ini = folio['Registro'][c-1]
-#                     f_term = folio['Registro'][c]
-#                     inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
-#                     term = datetime.strptime(f_term,"%d/%m/%Y %H:%M:%S")
-#                     resta = term-inicio
-#                     fechas.append(resta.days) 
-#                 c += 1
-#         # print(usuario,fechas)
-#         control_jefes['dias_prom_asig_cuestionario'].append(sum(fechas) / len(fechas) if len(fechas)>0 else 0)
-#         control_jefes['dias_max_asig_cuestionario'].append(max(fechas))
+    #ahora conseguir métricas para los jefes
+    if usuario in excluir:
+        folios = gen_jef.loc[gen_jef['Usuario']==usuario]#cuestionarios donde participa el jefe
+        cuestionarios_asignados = list(folios['Folio'].unique())
+        #conseguir el equipo del usuario
+        for equpo in equipos_nom:
+            if usuario in equipos_nom[equpo]:
+                control_jefes['equipo'].append(equpo)
+        # print(usuario,len(cuestionarios_revisados))
+        control_jefes['usuario'].append(usuario)
+        control_jefes['cuestionarios_asignados'].append(len(cuestionarios_asignados))
+        fechas = []
+        for cuestionario in cuestionarios_asignados:
+            folio = general.loc[general['Folio']==cuestionario]#solo con los folios de un cuestionario--es base pequeña
+            folio = folio.reset_index(drop=True)
+            c = 0
+            revi = list(folio['Estatus'])
+            for proceso in list(folio['Usuario']):
+                if usuario == proceso and revi[c] in revOC:#este filtro es para solo seleccionar al usuario cuando hizo un estatus de asignacion revision OC numero que sea
+                    f_ini = folio['Registro'][c-1]
+                    f_term = folio['Registro'][c]
+                    inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
+                    term = datetime.strptime(f_term,"%d/%m/%Y %H:%M:%S")
+                    resta = term-inicio
+                    fechas.append(resta.days) 
+                c += 1
+        # print(usuario,fechas)
+        control_jefes['dias_prom_asig_cuestionario'].append(sum(fechas) / len(fechas) if len(fechas)>0 else 0)
+        control_jefes['dias_max_asig_cuestionario'].append(max(fechas) if len(fechas)>0 else 'No hay datos suficientes')
             
-# desempe = pd.DataFrame(control)
-# desem_jefes = pd.DataFrame(control_jefes)
+desempe = pd.DataFrame(control)
+desem_jefes = pd.DataFrame(control_jefes)
         
                 
                 

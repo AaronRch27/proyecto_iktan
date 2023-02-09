@@ -1,9 +1,3 @@
-
-Falta revisar el tema de la identificación de responsables revisoress desde estatus.
-
-Meter un filtro de perfil para eliminar los de administrador 
-
-Requerimentos de equipo de Control y Logisticia.
-
-Fechas definitivas de operativo.
-Base prueba de iktan 2023
+Replantear metricas de desempeño derivado de cambio en registro de estatus.
+Adicional a esto, sumar métricas de cuestionarios en revisión simultáneos 
+(promedio y maximos).
