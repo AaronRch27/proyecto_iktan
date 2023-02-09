@@ -18,7 +18,7 @@ class aplicacion(tk.Frame):
         self.master = master
         self.master.title('Asistente de Control y Rendimiento Operativo')
         #self.master.geometry('900x200')
-        self.logo = tk.PhotoImage(file="acro_log.png")
+        self.logo = tk.PhotoImage(file="Utilidades_app/acro_log.png")
         self.master.iconphoto('wm',self.logo)
         self.master.configure(bg='#def3f6')
         self.pack()
@@ -494,7 +494,7 @@ class aplicacion(tk.Frame):
         if 'Revisión OC' in texto or 'Pendiente' in texto:
             res = 'Pendiente'
         elif 'FueraT' in texto:
-            res = 'Retraso en asignación'
+            res = 'Retraso'
         else:
             res = 'En revisión'
         return res

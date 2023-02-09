@@ -7,6 +7,7 @@ Created on Wed Jul 27 17:35:44 2022
 
 import pandas as pd
 from datetime import datetime
+import numpy as np
 
 
 hoy =  datetime.now()
@@ -123,10 +124,10 @@ def procesar(documento):
         'CNSIPEE':['17/04/2023 00:00:00','30/06/2023 00:00:00'],
         'CNGE': ['24/04/2023 00:00:00','21/07/2023 00:00:00'],
         'CNSPE':['12/06/2023 00:00:00','31/08/2023 00:00:00'],
-        'CNPJE':['13/06/2022 00:00:00','12/08/2022 00:00:00'],#no actualizado
-        'CNIJE':['27/06/2022 00:00:00','12/08/2022 00:00:00'],#no actualizado
-        'CNDHE':['15/08/2022 00:00:00','07/10/2022 00:00:00'],#no actualizado
-        'vacio':['01/01/2022 00:00:00','01/01/2022 00:00:00']#no actualizado
+        'CNPJE':['26/06/2023 00:00:00','08/09/2023 00:00:00'],
+        'CNIJE':['10/07/2023 00:00:00','15/09/2023 00:00:00'],
+        'CNDHE':['21/08/2023 00:00:00','03/11/2023 00:00:00'],
+        'vacio':['01/01/2023 00:00:00','01/01/2023 00:00:00']
         }
     d_OC = []
     d_firma = []
@@ -213,6 +214,10 @@ def procesar(documento):
                'ALEXEI PRADEL HERNANDEZ'] #jefes de equipo que designan
     nndiasOC = [] #conteo de días que tiene un cuestionario desde su llegada a oficinas centrales para asignacion y revision
     nndiasrevOC = []#conteo de dias que tiene un cuestionario luego de ser asignado por jefe de equipo
+    #crear variable con dias no laborales de inegi año,mes,dia
+    feriados = ['2023-02-06', '2023-03-20','2023-04-06','2023-04-07',
+                '2023-05-01', '2023-05-05', '2023-07-08', '2023-09-16',
+                '2023-11-02', '2023-11-20', '2023-12-25']
     # borrar = []
     ntest = ntest.reset_index(drop=True)
     for val in list(ntest['Usuario']):
@@ -239,10 +244,20 @@ def procesar(documento):
             tam = historial_folio.shape
             penultimo_stat = historial_folio.loc[tam[0]-2,'Registro']
             penultimo_stat = pd.to_datetime(penultimo_stat,format="%d/%m/%Y %H:%M:%S")
-            dife = hoy - penultimo_stat
-            nndiasOC.append(dife.days)
-            dife = hoy - ntest.loc[fila,'Fecha'] 
-            nndiasrevOC.append(dife.days)
+            # dife = hoy - penultimo_stat
+            dife = np.busday_count(hoy.date(),
+                                   penultimo_stat.date(),
+                                   holidays=feriados)
+                       
+            nndiasOC.append(dife * -1) #por menos uno para pasarlo a positivo
+            # dlaborales.append(np.busday_count(hoy.date(), #este solo sirve para prueba, no tiene otra utilidad
+                                              # penultimo_stat.date(),
+                                              # holidays=feriados))
+            # dife = hoy - ntest.loc[fila,'Fecha'] 
+            dife = np.busday_count(hoy.date(),
+                                   ntest.loc[fila,'Fecha'].date(),
+                                   holidays=feriados)
+            nndiasrevOC.append(dife * -1)
         retraso = hoy - ntest.loc[fila,'Fecha'] 
         if retraso.days > 5:
             #si hay retraso no se cambia al usuario
@@ -434,8 +449,11 @@ def procesar(documento):
                             f_term = folio['Registro'][c]
                             inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
                             term = datetime.strptime(f_term,"%d/%m/%Y %H:%M:%S")
-                            resta = term-inicio
-                            fechas.append(resta.days) 
+                            resta = np.busday_count(term.date(),
+                                                   inicio.date(),
+                                                   holidays=feriados)
+                            fechas.append(resta * -1) 
+                            # fechas.append(resta.days) 
                             ultimoOC += 1
                         c += 1
                            
@@ -470,8 +488,10 @@ def procesar(documento):
                             f_term = folio['Registro'][c]
                             inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
                             term = datetime.strptime(f_term,"%d/%m/%Y %H:%M:%S")
-                            resta = term-inicio
-                            fechas.append(resta.days) 
+                            resta = np.busday_count(term.date(),
+                                                   inicio.date(),
+                                                   holidays=feriados)
+                            fechas.append(resta * -1) 
                         c += 1
                 # print(usuario,fechas)
                 promedio_asig = sum(fechas) / len(fechas) if len(fechas)>0 else 0
