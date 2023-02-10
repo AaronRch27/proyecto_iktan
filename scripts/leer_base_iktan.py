@@ -245,19 +245,28 @@ def procesar(documento):
             penultimo_stat = historial_folio.loc[tam[0]-2,'Registro']
             penultimo_stat = pd.to_datetime(penultimo_stat,format="%d/%m/%Y %H:%M:%S")
             # dife = hoy - penultimo_stat
-            dife = np.busday_count(hoy.date(),
-                                   penultimo_stat.date(),
+            h_dif = hoy.hour - penultimo_stat.hour
+            if h_dif < 0:
+                n_hoy = hoy - pd.tseries.offsets.BusinessDay(1)
+                horasdia = 1 - (((h_dif*-1) * 10 / 24) * 0.1)
+                dife = np.busday_count(penultimo_stat.date(),
+                                       n_hoy.date(),
+                                       holidays=feriados)
+            if h_dif >= 0:
+                dife = np.busday_count(penultimo_stat.date(),
+                                   hoy.date(),
                                    holidays=feriados)
+                horasdia = (h_dif * 10 / 24) * 0.1
                        
-            nndiasOC.append(dife * -1) #por menos uno para pasarlo a positivo
+            nndiasOC.append(round(dife + horasdia,1)) #por menos uno para pasarlo a positivo
             # dlaborales.append(np.busday_count(hoy.date(), #este solo sirve para prueba, no tiene otra utilidad
                                               # penultimo_stat.date(),
                                               # holidays=feriados))
             # dife = hoy - ntest.loc[fila,'Fecha'] 
-            dife = np.busday_count(hoy.date(),
-                                   ntest.loc[fila,'Fecha'].date(),
+            dife = np.busday_count(ntest.loc[fila,'Fecha'].date(),
+                                   hoy.date(),
                                    holidays=feriados)
-            nndiasrevOC.append(dife * -1)
+            nndiasrevOC.append(dife)
         retraso = hoy - ntest.loc[fila,'Fecha'] 
         if retraso.days > 5:
             #si hay retraso no se cambia al usuario
@@ -449,10 +458,22 @@ def procesar(documento):
                             f_term = folio['Registro'][c]
                             inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
                             term = datetime.strptime(f_term,"%d/%m/%Y %H:%M:%S")
-                            resta = np.busday_count(term.date(),
-                                                   inicio.date(),
+                            h_dif = term.hour - inicio.hour
+                            # resta = np.busday_count(inicio.date(),
+                            #                        term.date(),
+                            #                        holidays=feriados)
+                            if h_dif < 0:
+                                n_hoy = term - pd.tseries.offsets.BusinessDay(1)
+                                horasdia = 1 - (((h_dif*-1) * 10 / 24) * 0.1)
+                                dife = np.busday_count(inicio.date(),
+                                                       n_hoy.date(),
+                                                       holidays=feriados)
+                            if h_dif >= 0:
+                                dife = np.busday_count(inicio.date(),
+                                                   term.date(),
                                                    holidays=feriados)
-                            fechas.append(resta * -1) 
+                                horasdia = (h_dif * 10 / 24) * 0.1
+                            fechas.append(round(dife + horasdia,1)) 
                             # fechas.append(resta.days) 
                             ultimoOC += 1
                         c += 1
@@ -488,10 +509,23 @@ def procesar(documento):
                             f_term = folio['Registro'][c]
                             inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
                             term = datetime.strptime(f_term,"%d/%m/%Y %H:%M:%S")
-                            resta = np.busday_count(term.date(),
-                                                   inicio.date(),
+                            h_dif = term.hour - inicio.hour
+                            
+                            # resta = np.busday_count(inicio.date(),
+                            #                        term.date(),
+                            #                        holidays=feriados)
+                            if h_dif < 0:
+                                n_hoy = term - pd.tseries.offsets.BusinessDay(1)
+                                horasdia = 1 - (((h_dif*-1) * 10 / 24) * 0.1)
+                                dife = np.busday_count(inicio.date(),
+                                                       n_hoy.date(),
+                                                       holidays=feriados)
+                            if h_dif >= 0:
+                                dife = np.busday_count(inicio.date(),
+                                                   term.date(),
                                                    holidays=feriados)
-                            fechas.append(resta * -1) 
+                                horasdia = (h_dif * 10 / 24) * 0.1
+                            fechas.append(round(dife + horasdia,1)) 
                         c += 1
                 # print(usuario,fechas)
                 promedio_asig = sum(fechas) / len(fechas) if len(fechas)>0 else 0
