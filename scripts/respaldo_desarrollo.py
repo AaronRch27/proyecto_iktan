@@ -231,9 +231,12 @@ feriados = ['2023-02-06', '2023-03-20','2023-04-06','2023-04-07',
             '2023-11-02', '2023-11-20', '2023-12-25']
 for val in list(ntest['Usuario']):
     if val not in plantilla:
-        if 'Revisión OC' in ntest.loc[fila,'Estatus']:
-            ntest.loc[fila,'Estatus'] = 'Pendiente' 
-            ntest.loc[fila,'Usuario'] = 'Por asignar'
+        if 'Revisión OC' in ntest.loc[fila,'Estatus']: 
+            if ntest.loc[fila,'Estatus']== 'Revisión OC (1)':#acotarlo a la revision 1 porque ahí todavía no es asignado
+                ntest.loc[fila,'Estatus'] = 'Pendiente' 
+                ntest.loc[fila,'Usuario'] = 'Por asignar'
+            else: #son revisiones oc más de 1
+                #buscar la observacion para obtener al ultimo responsable designado
         #como no es usuario de los revisores ni jefes de equipo, se interpreta que su cuestionario no ha sido asignado para revision
         docc = hoy - ntest.loc[fila,'Fecha'] 
         nndiasOC.append(docc.days)
