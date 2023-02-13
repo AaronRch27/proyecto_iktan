@@ -14,7 +14,7 @@ hoy =  datetime.now()
 
 #leer archivo descargado de iktan
 
-documento = pd.read_excel('xIktan_2023012401294355_reporteSegumiento.xlsx')
+documento = pd.read_excel('xIktan_2023012401294355_modificado_pruebas.xlsx')
 
 #formar nuevo dataframe
 rep = documento.fillna('vacio') #llenar espacios vacios con la palabra 'vacio'
@@ -237,10 +237,47 @@ for val in list(ntest['Usuario']):
                 ntest.loc[fila,'Usuario'] = 'Por asignar'
             else: #son revisiones oc más de 1
                 #buscar la observacion para obtener al ultimo responsable designado
+                responsbale_revisor = 'No asignado' #previamente asignado, por fdefecto es no asignado pero cambiará
+                historial_folio=df[df['Folio']==ntest.loc[fila,'Folio']]
+                historial_folio = historial_folio.reset_index(drop=True)
+                #iterar para encontrar el estatus de asignación
+                for i in list(historial_folio['Observación']):
+                    if 'Folio asignado a usuario para su revisón a:' in i:
+                        div_ob = i.split(':')
+                        responsbale_revisor = div_ob[-1]
+                        # ntest.loc[fila,'Estatus'] = 'En revisión' 
+                        ntest.loc[fila,'Usuario'] = responsbale_revisor
+                        
         #como no es usuario de los revisores ni jefes de equipo, se interpreta que su cuestionario no ha sido asignado para revision
-        docc = hoy - ntest.loc[fila,'Fecha'] 
-        nndiasOC.append(docc.days)
-        nndiasrevOC.append('No Asignado')
+        tam = historial_folio.shape
+        penultimo_stat = historial_folio.loc[tam[0]-2,'Registro']
+        penultimo_stat = pd.to_datetime(penultimo_stat,format="%d/%m/%Y %H:%M:%S")
+        # dife = hoy - penultimo_stat
+        h_dif = hoy.hour - penultimo_stat.hour
+        if h_dif < 0:
+            n_hoy = hoy - pd.tseries.offsets.BusinessDay(1)
+            horasdia = 1 - (((h_dif*-1) * 10 / 24) * 0.1)
+            dife = np.busday_count(penultimo_stat.date(),
+                                   n_hoy.date(),
+                                   holidays=feriados)
+        if h_dif >= 0:
+            dife = np.busday_count(penultimo_stat.date(),
+                               hoy.date(),
+                               holidays=feriados)
+            horasdia = (h_dif * 10 / 24) * 0.1
+                   
+        nndiasOC.append(round(dife + horasdia,1)) #por menos uno para pasarlo a positivo
+        # dlaborales.append(np.busday_count(hoy.date(), #este solo sirve para prueba, no tiene otra utilidad
+                                          # penultimo_stat.date(),
+                                          # holidays=feriados))
+        # dife = hoy - ntest.loc[fila,'Fecha'] 
+        dife = np.busday_count(ntest.loc[fila,'Fecha'].date(),
+                               hoy.date(),
+                               holidays=feriados)
+        nndiasrevOC.append(dife)
+        # docc = hoy - ntest.loc[fila,'Fecha'] 
+        # nndiasOC.append(docc.days)
+        # nndiasrevOC.append('En revision')
     if val in plantilla:
         ntest.loc[fila,'Estatus'] = 'En revisión'  #dado que el equipo lo tiene debe cambiar este estatus a revision
         #de llegar aquí quiere decir que ya ha sido asignado el cuestionario y habría que revisar la observacion pra ver quien lo tiene a revision
