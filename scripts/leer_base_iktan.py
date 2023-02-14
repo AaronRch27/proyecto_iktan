@@ -223,12 +223,46 @@ def procesar(documento):
     for val in list(ntest['Usuario']):
         if val not in plantilla:
             if 'Revisión OC' in ntest.loc[fila,'Estatus']:
-                ntest.loc[fila,'Estatus'] = 'Pendiente' 
-                ntest.loc[fila,'Usuario'] = 'Por asignar'
+                if ntest.loc[fila,'Estatus']== 'Revisión OC (1)':#acotarlo a la revision 1 porque ahí todavía no es asignado
+                    ntest.loc[fila,'Estatus'] = 'Pendiente' 
+                    ntest.loc[fila,'Usuario'] = 'Por asignar'
+                else: #son revisiones oc más de 1
+                    #buscar la observacion para obtener al ultimo responsable designado
+                    responsbale_revisor = 'No asignado' #previamente asignado, por fdefecto es no asignado pero cambiará
+                    historial_folio=df[df['Folio']==ntest.loc[fila,'Folio']]
+                    historial_folio = historial_folio.reset_index(drop=True)
+                    #iterar para encontrar el estatus de asignación
+                    for i in list(historial_folio['Observación']):
+                        if 'Folio asignado a usuario para su revisón a:' in i:
+                            div_ob = i.split(':')
+                            responsbale_revisor = div_ob[-1]
+                            # ntest.loc[fila,'Estatus'] = 'En revisión' 
+                            ntest.loc[fila,'Usuario'] = responsbale_revisor
+                            
             #como no es usuario de los revisores ni jefes de equipo, se interpreta que su cuestionario no ha sido asignado para revision
-            docc = hoy - ntest.loc[fila,'Fecha'] 
-            nndiasOC.append(docc.days)
-            nndiasrevOC.append('No Asignado')
+            tam = historial_folio.shape
+            ultimo_stat = historial_folio.loc[tam[0]-1,'Registro']#no es penultimo sino ultimo
+            ultimo_stat = pd.to_datetime(ultimo_stat,format="%d/%m/%Y %H:%M:%S")
+            # dife = hoy - penultimo_stat
+            h_dif = hoy.hour - ultimo_stat.hour
+            if h_dif < 0:
+                n_hoy = hoy - pd.tseries.offsets.BusinessDay(1)
+                horasdia = 1 - (((h_dif*-1) * 10 / 24) * 0.1)
+                dife = np.busday_count(ultimo_stat.date(),
+                                       n_hoy.date(),
+                                       holidays=feriados)
+            if h_dif >= 0:
+                dife = np.busday_count(ultimo_stat.date(),
+                                   hoy.date(),
+                                   holidays=feriados)
+                horasdia = (h_dif * 10 / 24) * 0.1
+                       
+            nndiasOC.append(round(dife + horasdia,1)) #por menos uno para pasarlo a positivo
+            # dife = np.busday_count(ntest.loc[fila,'Fecha'].date(),
+            #                        hoy.date(),
+            #                        holidays=feriados)
+            #aquí se agrega directamente lo mismo porque como el útlimo estatus es de otra persona fuera de OC pues eso
+            nndiasrevOC.append(round(dife + horasdia,1))
             
         if val in plantilla:
             ntest.loc[fila,'Estatus'] = 'En revisión'  #dado que el equipo lo tiene debe cambiar este estatus a revision
@@ -263,12 +297,31 @@ def procesar(documento):
                                               # penultimo_stat.date(),
                                               # holidays=feriados))
             # dife = hoy - ntest.loc[fila,'Fecha'] 
-            dife = np.busday_count(ntest.loc[fila,'Fecha'].date(),
+            ultimo_stat = historial_folio.loc[tam[0]-1,'Registro']
+            ultimo_stat = pd.to_datetime(ultimo_stat,format="%d/%m/%Y %H:%M:%S")
+            
+            h_dif = hoy.hour - ultimo_stat.hour
+            # print(ultimo_stat,hoy, h_dif)
+            if h_dif < 0:
+                n_hoy = hoy - pd.tseries.offsets.BusinessDay(1)
+                horasdia = 1 - (((h_dif*-1) * 10 / 24) * 0.1)
+                dife = np.busday_count(ultimo_stat.date(),
+                                       n_hoy.date(),
+                                       holidays=feriados)
+            if h_dif >= 0:
+                dife = np.busday_count(ultimo_stat.date(),
                                    hoy.date(),
                                    holidays=feriados)
-            nndiasrevOC.append(dife)
-        retraso = hoy - ntest.loc[fila,'Fecha'] 
-        if retraso.days > 5:
+                horasdia = (h_dif * 10 / 24) * 0.1
+            # dife = np.busday_count(ultimo_stat.date(),
+            #                        hoy.date(),
+            #                        holidays=feriados)
+            nndiasrevOC.append(round(dife + horasdia,1))
+        # retraso = hoy - ntest.loc[fila,'Fecha'] 
+        retraso = np.busday_count(ultimo_stat.date(), 
+                                  hoy.date(),
+                                  holidays=feriados) 
+        if retraso > 5:
             #si hay retraso no se cambia al usuario
             # ntest.loc[fila,'Usuario'] = 'Retraso en aisgnación'
             ntest.loc[fila,'Estatus'] = 'FueraT'
