@@ -14,7 +14,7 @@ hoy =  datetime.now()
 
 #leer archivo descargado de iktan
 
-documento = pd.read_excel('xIktan_2023012401294355_modificado_pruebas.xlsx')
+documento = pd.read_excel('xIktan_20230627012855917_reporteSegumiento.xlsx')
 
 #formar nuevo dataframe
 rep = documento.fillna('vacio') #llenar espacios vacios con la palabra 'vacio'
@@ -68,11 +68,12 @@ equipos_nom = {
       'VICTOR RAMIRO ESPINA CASAS',
       'ANA AGLAE FLORES AGUILAR'],
     'Control y Logística': ['ALEXEI PRADEL HERNANDEZ',
-      'MA. GUADALUPE ADAME SALGADO',
+      # 'MA. GUADALUPE ADAME SALGADO',
       'KARLA FABIOLA ACEVEDO BERNARDINO',
-      'ANTONIO ROMERO LEYVA',
+      # 'ANTONIO ROMERO LEYVA',
       'YOLISMA IVETTE LOPEZ CERON',
-      'DIANA LETICIA ALCALA GONZALEZ']
+      # 'DIANA LETICIA ALCALA GONZALEZ',
+      'EDWIN HECTOR PINEDA LOPEZ']
     }
 
 #lineas para conseguir quienes están en la base y quienes no
@@ -136,6 +137,9 @@ f_corte = {#cada llave tiene una lista con dos valores, el primero es la fecha d
     'CNDHE':['21/08/2023 00:00:00','03/11/2023 00:00:00'],
     'vacio':['01/01/2023 00:00:00','01/01/2023 00:00:00']
     }
+feriados = ['2023-02-06', '2023-03-20','2023-04-06','2023-04-07',
+            '2023-05-01', '2023-05-05', '2023-07-08', '2023-09-16',
+            '2023-11-02', '2023-11-20', '2023-12-25']
 d_OC = []
 d_firma = []
 c = 0
@@ -145,8 +149,15 @@ for registro in df['Registro']:
         proy = df['Proyecto'][c]
         f_OC = pd.to_datetime(f_corte[proy][0],format="%d/%m/%Y %H:%M:%S")
         f_Fir = pd.to_datetime(f_corte[proy][1],format="%d/%m/%Y %H:%M:%S")
-        d_OC.append(f_OC - f_est)
-        d_firma.append(f_Fir - f_est)
+        # d_OC.append(f_OC - f_est)
+        d_OC.append(round(np.busday_count(hoy.date(),
+                               f_OC.date(),
+                               holidays=feriados)))
+        #d_firma.append(f_Fir - f_est)
+        d_firma.append(round(np.busday_count(hoy.date(),
+                               f_Fir.date(),
+                               holidays=feriados)))
+        
     except:
         d_OC.append('Error en fechas')
         d_firma.append('Error en fechas')
@@ -226,15 +237,15 @@ nndiasrevOC = []#conteo de dias que tiene un cuestionario luego de ser asignado 
 ntest = ntest.reset_index(drop=True)
 dlaborales = [] #este solo es para prueb, no tiene otra utilidad
 #crear variable con dias no laborales de inegi año,mes,dia
-feriados = ['2023-02-06', '2023-03-20','2023-04-06','2023-04-07',
-            '2023-05-01', '2023-05-05', '2023-07-08', '2023-09-16',
-            '2023-11-02', '2023-11-20', '2023-12-25']
+
 for val in list(ntest['Usuario']):
     if val not in plantilla:
+        var_alfa = 0
         if 'Revisión OC' in ntest.loc[fila,'Estatus']: 
             if ntest.loc[fila,'Estatus']== 'Revisión OC (1)':#acotarlo a la revision 1 porque ahí todavía no es asignado
                 ntest.loc[fila,'Estatus'] = 'Pendiente' 
                 ntest.loc[fila,'Usuario'] = 'Por asignar'
+                var_alfa = 1
             else: #son revisiones oc más de 1
                 #buscar la observacion para obtener al ultimo responsable designado
                 responsbale_revisor = 'No asignado' #previamente asignado, por fdefecto es no asignado pero cambiará
@@ -250,31 +261,39 @@ for val in list(ntest['Usuario']):
                         
         #como no es usuario de los revisores ni jefes de equipo, se interpreta que su cuestionario no ha sido asignado para revision
         tam = historial_folio.shape
-        penultimo_stat = historial_folio.loc[tam[0]-2,'Registro']
-        penultimo_stat = pd.to_datetime(penultimo_stat,format="%d/%m/%Y %H:%M:%S")
+        ultimo_stat = historial_folio.loc[tam[0]-1,'Registro']#no es penultimo sino ultimo
+        ultimo_stat = pd.to_datetime(ultimo_stat,format="%d/%m/%Y %H:%M:%S")
         # dife = hoy - penultimo_stat
-        h_dif = hoy.hour - penultimo_stat.hour
+        h_dif = hoy.hour - ultimo_stat.hour
         if h_dif < 0:
             n_hoy = hoy - pd.tseries.offsets.BusinessDay(1)
             horasdia = 1 - (((h_dif*-1) * 10 / 24) * 0.1)
-            dife = np.busday_count(penultimo_stat.date(),
+            dife = np.busday_count(ultimo_stat.date(),
                                    n_hoy.date(),
                                    holidays=feriados)
         if h_dif >= 0:
-            dife = np.busday_count(penultimo_stat.date(),
+            dife = np.busday_count(ultimo_stat.date(),
                                hoy.date(),
                                holidays=feriados)
             horasdia = (h_dif * 10 / 24) * 0.1
                    
-        nndiasOC.append(round(dife + horasdia,1)) #por menos uno para pasarlo a positivo
-        # dlaborales.append(np.busday_count(hoy.date(), #este solo sirve para prueba, no tiene otra utilidad
-                                          # penultimo_stat.date(),
-                                          # holidays=feriados))
-        # dife = hoy - ntest.loc[fila,'Fecha'] 
-        dife = np.busday_count(ntest.loc[fila,'Fecha'].date(),
-                               hoy.date(),
-                               holidays=feriados)
-        nndiasrevOC.append(dife)
+        #verificar si es día no laboral el ultimo estatus
+        
+        dia_descanso = np.is_busday([ultimo_stat.date()],holidays=feriados).tolist()
+        if not dia_descanso[0]:
+            nndiasOC.append(round(dife + horasdia,1)+1)#Se suma uno para ajutsar porque lo enviaron en día no laboral y para que no sea mayor que la asignación de revisión OC
+        if dia_descanso[0]:
+            nndiasOC.append(round(dife + horasdia,1)) #por menos uno para pasarlo a positivo
+        # dife = np.busday_count(ntest.loc[fila,'Fecha'].date(),
+        #                        hoy.date(),
+        #                        holidays=feriados)
+        #aquí se agrega directamente lo mismo porque como el útlimo estatus es de otra persona fuera de OC pues eso
+        # nndiasrevOC.append(round(dife + horasdia,1))
+        #Hacer distinción en el cálculo si es primera revisión y no está asignado, o si ya es segunda revisión y hay un repsonsable revisor asignado
+        if var_alfa:
+            nndiasrevOC.append('NA')
+        if not var_alfa:
+            nndiasrevOC.append(round(dife + horasdia,1))
         # docc = hoy - ntest.loc[fila,'Fecha'] 
         # nndiasOC.append(docc.days)
         # nndiasrevOC.append('En revision')
@@ -292,7 +311,7 @@ for val in list(ntest['Usuario']):
         tam = historial_folio.shape
         penultimo_stat = historial_folio.loc[tam[0]-2,'Registro']
         penultimo_stat = pd.to_datetime(penultimo_stat,format="%d/%m/%Y %H:%M:%S")
-        # dife = hoy - penultimo_stat
+        
         h_dif = hoy.hour - penultimo_stat.hour
         if h_dif < 0:
             n_hoy = hoy - pd.tseries.offsets.BusinessDay(1)
@@ -306,17 +325,39 @@ for val in list(ntest['Usuario']):
                                holidays=feriados)
             horasdia = (h_dif * 10 / 24) * 0.1
                    
-        nndiasOC.append(round(dife + horasdia,1)) #por menos uno para pasarlo a positivo
-        # dlaborales.append(np.busday_count(hoy.date(), #este solo sirve para prueba, no tiene otra utilidad
-                                          # penultimo_stat.date(),
-                                          # holidays=feriados))
-        # dife = hoy - ntest.loc[fila,'Fecha'] 
-        dife = np.busday_count(ntest.loc[fila,'Fecha'].date(),
+        #verificar si es día de descanso el último estatus
+        
+        dia_descanso = np.is_busday([penultimo_stat.date()],holidays=feriados).tolist()
+        if not dia_descanso[0]:
+            nndiasOC.append(round(dife + horasdia,1)+1)#Se suma uno para ajutsar porque lo enviaron en día no laboral y para que no sea mayor que la asignación de revisión OC           
+        if dia_descanso[0]:
+            nndiasOC.append(round(dife + horasdia,1))
+        
+        ultimo_stat = historial_folio.loc[tam[0]-1,'Registro']
+        ultimo_stat = pd.to_datetime(ultimo_stat,format="%d/%m/%Y %H:%M:%S")
+        
+        h_dif = hoy.hour - ultimo_stat.hour
+        # print(ultimo_stat,hoy, h_dif)
+        if h_dif < 0:
+            n_hoy = hoy - pd.tseries.offsets.BusinessDay(1)
+            horasdia = 1 - (((h_dif*-1) * 10 / 24) * 0.1)
+            dife = np.busday_count(ultimo_stat.date(),
+                                   n_hoy.date(),
+                                   holidays=feriados)
+        if h_dif >= 0:
+            dife = np.busday_count(ultimo_stat.date(),
                                hoy.date(),
                                holidays=feriados)
-        nndiasrevOC.append(dife)
-    retraso = hoy - ntest.loc[fila,'Fecha'] 
-    if retraso.days > 5:
+            horasdia = (h_dif * 10 / 24) * 0.1
+        # dife = np.busday_count(ultimo_stat.date(),
+        #                        hoy.date(),
+        #                        holidays=feriados)
+        nndiasrevOC.append(round(dife + horasdia,1))
+    # retraso = hoy - ntest.loc[fila,'Fecha'] 
+    retraso = np.busday_count(ultimo_stat.date(), 
+                              hoy.date(),
+                              holidays=feriados)
+    if retraso > 5:
         #si hay retraso no se cambia al usuario
         # ntest.loc[fila,'Usuario'] = 'Retraso en aisgnación'
         ntest.loc[fila,'Estatus'] = 'FueraT'
@@ -358,6 +399,7 @@ estructura = {'Folio':[],
              'Equipo': [],
              'Rev_OC?': [],
              'Dias_inicio_RevOC': [],
+             'el_cuestionario_aplica?': [],
              'Recuperado_firma_y_sello?': [],
              'Dias_fin_Recfirma': [],
              'Días_RevOC-último_estatus': []
@@ -384,6 +426,7 @@ for folio in folios_unicos:
         uctu[val] = 'NA'
     fys = 'No'
     OC = 'No'
+    aplica = 'Sí'
     c = 0
     for val in trabajar['Estatus']:
         if val in uctu:
@@ -393,15 +436,21 @@ for folio in folios_unicos:
             fys = 'Sí'
         if 'Revisión OC' in val:
             OC = 'Sí'
+        if 'No aplica (1)' in val:
+            aplica = 'No'
         
         c += 1
     estructura['Recuperado_firma_y_sello?'].append(fys)
     estructura['Rev_OC?'].append(OC)
+    estructura['el_cuestionario_aplica?'].append(aplica)
     #calcular los días desde primera revision OC hasta su último estatus de revision
     if OC == 'Sí':
         # inicio = estructura['Revisión OC (1)'][c1]
         inicio = uctu['Revisión OC (1)']
-        dias = (ultimo-inicio).days
+        #dias = (ultimo-inicio).days
+        dias = round(np.busday_count(inicio.date(),
+                               ultimo.date(),
+                               holidays=feriados),1)
         estructura['Días_RevOC-último_estatus'].append(dias)
     if OC == 'No':
         estructura['Días_RevOC-último_estatus'].append('No aplica')
@@ -415,6 +464,7 @@ for folio in folios_unicos:
             
     c1 += 1
 historial = pd.DataFrame(estructura)
+fecha = list(df['Folio'])[-2] #fecha de descarga de la base
 # historial.to_csv('Historial_de_revision_OC.csv',index=False,encoding='utf-8-sig')
 # with pd.ExcelWriter('analisis_seguimiento.xlsx') as writer:  
 #     rt.to_excel(writer, sheet_name='Revision_ROCE',index=False)
@@ -430,6 +480,8 @@ if 'vacio' in censos:
     censos.remove('vacio')
 cen_can = {} #cantidad de cuestionarios
 avan = []
+revi = []
+liber = []
 for censo in censos:
     bb = df.loc[df['Proyecto']==censo]
     cantidad = len(list(bb['Folio'].unique()))
@@ -437,28 +489,44 @@ for censo in censos:
     #otro proceso dentro de esta iteracion
     # bb = df.loc[df['Proyecto']==censo]
     filtros = list(bb['Folio'].unique())
-    r = 0
+    r = 0 #suma de recuperados con firma y sello--concluidos
+    OCCC = 0 #suma de revisiones
+    lib = 0 #suma de cuestionarios revisados
     for filtro in filtros:
         bb1 = bb.loc[bb['Folio']==filtro]
         sta = list(bb1['Estatus'])
         suma = False
+        suma1 = False
+        suma2 = False
         for es in sta:
+            if 'Revisión OC' in es:
+                suma1 = True
+            if 'En proceso de firma y sello' in es:
+                suma2 = True
             if 'Recuperado con firma y sello' in es:
                 suma = True
                 break
         if suma:
             r += 1
+        if suma1:
+            OCCC += 1
+        if suma2:
+            lib += 1
     avan.append(r)
+    revi.append(OCCC)
+    liber.append(lib)
     
 avance = {'Equipo':[equipos[x] for x in list(cen_can.keys())],
        'Programa':list(cen_can.keys()),
        'Cuestionarios':list(cen_can.values()),
-       'Avance':avan,
-       'Porcentaje':[]
+       'revisiones':revi,
+       'cuestionarios_liberados':liber,
+       'Avance_cuestionarios_recuperados':avan,
+       'Porcentaje_de_conclusion':[]
        }
 c = 0
 for val in list(cen_can.values()):
-    avance['Porcentaje'].append(f'{round(avan[c]*100/val)}%')
+    avance['Porcentaje_de_conclusion'].append(f'{round(avan[c]*100/val)}%')
     c += 1
 avance = pd.DataFrame(avance)
 
@@ -594,6 +662,129 @@ for usuario in plantilla: #itearar por cada usuario en el directorio de OC
             
 desempe = pd.DataFrame(control)
 desem_jefes = pd.DataFrame(control_jefes)
-        
+
+
+#Apartado para generar un reporte de carga de trabajo a los responsables revisores, por día laboral
+#Primer paso es generar una matriz donde los indices sean los dias laborales, y las columnas los nombres de los responsbales revisores
+matriz_carga = {'dia_laboral':[]}
+matriz_folios_carga = {'dia_laboral':[]}
+#agregar responsables revisores
+for user in control['usuario']:
+    matriz_carga[user] = []
+    matriz_folios_carga[user] = []
+#agregar días indice pero desde abril, ya que enero a marzo no hay revision en oc
+filas_fecha = pd.date_range(start=pd.to_datetime('01/04/2023 00:00:00',format="%d/%m/%Y %H:%M:%S"),
+                            end=pd.to_datetime(fecha,format="%d/%m/%Y %H:%M:%S")#termina en la fecha de corte de la base de datos (dia que se descargó)
+                            )
+#corroborar que sean días laborales en inegi
+for date in list(filas_fecha):
+    comprobar = np.is_busday([date.date()],holidays=feriados)
+    comprobar = comprobar.tolist()
+    if comprobar[0]:
+        matriz_carga['dia_laboral'].append(date.date())
+        matriz_folios_carga['dia_laboral'].append(date.date())
+
+#llenar con ceros
+for key in matriz_carga:
+    if key != "dia_laboral":
+        matriz_carga[key] = [0 for i in matriz_carga['dia_laboral']]
+        matriz_folios_carga[key] = [[] for i in matriz_carga['dia_laboral']] # esta no se vair a dataframe todavía
+MC = pd.DataFrame(matriz_carga,index=matriz_carga['dia_laboral'])
+MDF = pd.DataFrame(matriz_folios_carga,index=matriz_folios_carga['dia_laboral'])
+#inicio de conteo de cuestionarios por día
+#filtrar base por folios unicos
+trabajo_dias = df.copy()#copiado del frame original de iktan
+trabajo_dias.drop([df.shape[0]-1,df.shape[0]-2],axis=0,inplace=True)
+folios_unicos = list(trabajo_dias['Folio'].unique())
+for folio in folios_unicos:
+    frame = trabajo_dias.loc[trabajo_dias['Folio']==folio]
+    frame = frame.reset_index(drop=True)
+    #identificar al responsable revisor del folio
+    responsbale_revisor = False
+    for i in list(frame['Observación']):
+        if 'Folio asignado a usuario para su revisón a:' in i:
+            div_ob = i.split(':')
+            responsbale_revisor = div_ob[-1]
+    if not responsbale_revisor:
+        #de no existir se pasa al siguiente folio
+        continue
+    # if responsbale_revisor==' RUBI SAMANTHA MEDRANO MARTINEZ':
+    #     print(folio)
+    fila = 0
+    for estatus in list(frame['Estatus']):
+        if 'Revisión OC' in estatus:
+            num_rev  = estatus[-3:]
+            # print(estatus,frame.loc[fila,'Usuario'])
+            if '(1)' in estatus and frame.loc[fila,'Usuario'] in excluir:
+                fecha_inicial_rev = pd.to_datetime(frame.loc[fila,'Registro'],format="%d/%m/%Y %H:%M:%S")
+            if '(1)' not in estatus:
+                fecha_inicial_rev = pd.to_datetime(frame.loc[fila,'Registro'],format="%d/%m/%Y %H:%M:%S")
+            if '(1)' in estatus and frame.loc[fila,'Usuario'] not in excluir:
+                fila += 1
+                continue
+            try:#porque quizá el indcie excede el len del frame y podría ser error.
+                fecha_fin_rev = pd.to_datetime(frame.loc[fila+1,'Registro'],format="%d/%m/%Y %H:%M:%S")
+            except:
+                fecha_fin_rev = hoy.date()
+            lista_dias = list(pd.date_range(start=fecha_inicial_rev,
+                                        end=fecha_fin_rev
+                                        ))
+            for dia in lista_dias:
+                try:
+                    MC.loc[dia.date(),responsbale_revisor[1:]] += 1
+                    MDF.loc[dia.date(),responsbale_revisor[1:]].append(folio+'-'+num_rev)
+                except:
+                    
+                    pass
                 
                 
+        fila += 1
+del MC['dia_laboral'] #borrar columna de indices para que no se duplique
+del MDF['dia_laboral']
+#con esto ya se tiene el frame en MC con los cuestionarios que tienen o tenían por día. Sin embargo falta hacer una limpieza de los días donde no tuvieron nada y del último día porque ese no da un buen cálculo.
+#iterar por usuario en frame de avance
+maximo_carga_por_dia = []
+promedio_carga_trabajo = []
+n_retrasos_en_rev = []
+for usuario in desempe['usuario']:
+    valores = list(MC[usuario])
+    if sum(valores) == 0:
+        maximo_carga_por_dia.append('NA')
+        promedio_carga_trabajo.append('NA')
+        n_retrasos_en_rev.append('NA')
+    else:
+        inicio_rev = 0
+        for valor in valores:
+            if valor != 0:#detectar el primer cero para sacar su indice y trabajar sobre ese
+                break
+            inicio_rev += 1
+        efectivos = valores[inicio_rev:-1]#menos uno porque no interesa el dato final ya que ese no es preciso por ser fecha de corte de la descarga de la base de datos
+        maximo_carga_por_dia.append(max(efectivos))
+        promedio_carga_trabajo.append(sum(efectivos)/len(efectivos))
+        #conteo de cuestionarios con retraso
+        folio_r = list(MDF[usuario])
+        folio_efectivo = folio_r[inicio_rev:-1]
+        fol_tot = {}
+        todos = []
+        for lista in folio_efectivo:
+            for fol in lista:
+                if fol.endswith('(1)'):
+                    todos.append(fol)
+                if fol not in fol_tot:
+                    fol_tot[fol] = 1
+                else:
+                    fol_tot[fol] += 1
+        cuest_retrasados = [] #lista con los cuestionarios retrasados
+        for k in fol_tot:
+            if fol_tot[k] > 5:
+                cuest_retrasados.append(k)
+        n_retrasos_en_rev.append(len(cuest_retrasados))
+        if usuario == 'VICTOR RAMIRO ESPINA CASAS':
+            print(len(list(set(todos))))
+desempe['maximo_carga_por_dia'] = maximo_carga_por_dia
+desempe['promedio_carga_trabajo_por_dia'] = promedio_carga_trabajo
+desempe['cantidad_cuestionarios_con_retraso_en_revision'] = n_retrasos_en_rev
+with pd.ExcelWriter('prueba_carga_trabajo.xlsx') as writer:  
+    desempe.to_excel(writer, sheet_name='desempeño',index=False)
+    MC.to_excel(writer, sheet_name='Dias_carga_cuestionarios')
+    MDF.to_excel(writer, sheet_name='Dias_carga_cuestionarios_folio')

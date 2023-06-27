@@ -160,7 +160,7 @@ class aplicacion(tk.Frame):
         contra = self.contras.get()
         if contra == 'contraseñaOC':
             self.edd = 'Todos'
-            save(self.ROCE,self.OA,self.historial,self.avance,self.desemp,self.jefes)
+            save(self.ROCE,self.OA,self.historial,self.avance,self.desemp,self.jefes,self.fecha_d)
             br = self.pack_slaves()#limpiar interfaz
             for val in br:
                 val.destroy()
@@ -173,7 +173,7 @@ class aplicacion(tk.Frame):
                 texto = 'Con base a los términos establecidos en el cronograma general de actividades del programa censal, solicitamos de su apoyo para dar continuidad con la dinámica establecida en plan integral de seguimiento.'
                 messagebox.showinfo(
                     message = texto,
-                    title = '¡Alerta de desface en la planeación!'
+                    title = '¡Alerta de desfase en la planeación!'
                     )
             l1 = tk.Label(self.frame1, text="Carga de trabajo ",
                           fg='white',
@@ -239,7 +239,7 @@ class aplicacion(tk.Frame):
             if texto1:
                 messagebox.showinfo(
                     message = texto,
-                    title = '¡Alerta de desface en la planeación!'
+                    title = '¡Alerta de desfase en la planeación!'
                     )
         if edo =='Todos':
             br = self.pack_slaves()#limpiar interfaz
@@ -251,7 +251,7 @@ class aplicacion(tk.Frame):
                 texto = 'Con base a los términos establecidos en el cronograma general de actividades del programa censal, solicitamos de su apoyo para dar continuidad con la dinámica establecida en plan integral de seguimiento.'
                 messagebox.showinfo(
                     message = texto,
-                    title = '¡Alerta de desface en la planeación!'
+                    title = '¡Alerta de desfase en la planeación!'
                     )
         
         #crear el marco---propósitos estéticos
@@ -337,15 +337,26 @@ class aplicacion(tk.Frame):
         # tab = tk.Text(self.frame1,width=100)
         # tab.insert(tk.INSERT, self.filtro.to_string())
         # tab.pack(pady=10)
+        medidas = {'Turno':45,'Proyecto':60,
+                   'Módulo':60,'Entidad':105,
+                   'Registro':80,'Estatus':100,
+                   'Usuario':125,'dias_en_OC':65,
+                   'dias_en_rev_OC':95}
         arbol = ttk.Treeview(self.frame1)
         arbol['columns'] = list(self.filtro.columns)
         arbol.column('#0', width=0, stretch=tk.NO)#borrar primera columna porque sale vacia      
         for x in list(self.filtro.columns):
-            arbol.column(x, width=100 )
+            arbol.column(x, width=medidas[x], anchor='center' )
             arbol.heading(x, text=x)
         for imm in range(len(self.filtro)):
             arbol.insert('', tk.END, values=(list(self.filtro.iloc[imm,:])))
         arbol.pack()
+        #boton de generar excel con los datos
+        boton_g = tk.Button(self.frame1,
+                            text='Generar excel con estos datos',
+                            command=self.gen_excel)
+        boton_g.pack()
+        
         self.A.append(1)
         tk.Label(self.frame1, 
                  text='Filtros de consulta',
@@ -376,6 +387,19 @@ class aplicacion(tk.Frame):
             AV.pack()
         tk.Label(self.frame1,text='Fecha de consulta:'+ self.hoy.strftime("%d/%m/%Y"),
                  bg='#def3f6').pack()
+    
+    def gen_excel(self):
+        #guardar frame
+        fecha = self.fecha_d
+        fecha = fecha.replace('/','-')
+        fecha = fecha.replace(' ','-')
+        fecha = fecha.replace(':','-')
+        nombre = f'Turnos_{fecha}.csv'
+        self.filtro.to_csv(nombre,index=False,encoding='latin1')
+        messagebox.showinfo(
+            message =f'Archivo guardado en carpeta donde está este ejecutable con el nombre {nombre}',
+            title = 'Estado del archivo'
+            )
     
     def consul1(self):
         br = self.NV.pack_slaves()
@@ -417,15 +441,24 @@ class aplicacion(tk.Frame):
         # tab = tk.Text(self.frame1,width=100)
         # tab.insert(tk.INSERT, self.filtro.to_string())
         # tab.pack(pady=10)
+        medidas = {'Turno':45,'Proyecto':60,
+                   'Módulo':60,'Entidad':105,
+                   'Registro':80,'Estatus':100,
+                   'Usuario':125,'dias_en_OC':65,
+                   'dias_en_rev_OC':95}
         arbol = ttk.Treeview(self.frame1)
         arbol['columns'] = list(self.filtro.columns)
         arbol.column('#0', width=0, stretch=tk.NO)
         for x in list(self.filtro.columns):
-            arbol.column(x, width=100 )
+            arbol.column(x, width=medidas[x], anchor='center' )
             arbol.heading(x, text=x)
         for imm in range(len(self.filtro)):
             arbol.insert('', tk.END, values=(list(self.filtro.iloc[imm,:])))
         arbol.pack()
+        boton_g = tk.Button(self.frame1,
+                            text='Generar excel con estos datos',
+                            command=self.gen_excel)
+        boton_g.pack()
         self.A.append(1)
         li_des = tk.ttk.Combobox(self.frame1,
             state='readonly',
@@ -454,11 +487,16 @@ class aplicacion(tk.Frame):
         # tab = tk.Text(self.frame1,width=100)
         # tab.insert(tk.INSERT, filtro1.to_string())
         # tab.pack()
+        medidas = {'Turno':45,'Proyecto':60,
+                   'Módulo':60,'Entidad':105,
+                   'Registro':80,'Estatus':100,
+                   'Usuario':125,'dias_en_OC':65,
+                   'dias_en_rev_OC':95}
         arbol = ttk.Treeview(self.frame1)
         arbol['columns'] = list(filtro1.columns)
         arbol.column('#0', width=0, stretch=tk.NO)
         for x in list(filtro1.columns):
-            arbol.column(x, width=100 )
+            arbol.column(x, width=medidas[x], anchor='center' )
             arbol.heading(x, text=x)
         for imm in range(len(filtro1)):
             arbol.insert('', tk.END, values=(list(filtro1.iloc[imm,:])))
@@ -491,7 +529,7 @@ class aplicacion(tk.Frame):
     def mod_text(texto):
         "funcion para modificartexto de estatus y reducirlo"
 
-        if 'Revisión OC' in texto or 'Pendiente' in texto:
+        if 'Revisión OC (1)' in texto or 'Pendiente' in texto: #se hace especificacion de revisión 1 porque es cuando por primera vez se manda a OC y no tiene a nadie asignado por su revisión, las demás revisiones en teoría ya tendrán a alguien asignado para esa labor
             res = 'Pendiente'
         elif 'FueraT' in texto:
             res = 'Retraso'
@@ -508,11 +546,11 @@ class aplicacion(tk.Frame):
         for val in df['Rev_OC?']:
             if val == 'No':
                 if type(df['Dias_inicio_RevOC'][c]) != str:
-                    if df['Dias_inicio_RevOC'][c].days < 0:
+                    if df['Dias_inicio_RevOC'][c] < 0:
                         retrasos.append(df['Proyecto'][c])
             if df['Recuperado_firma_y_sello?'][c] == 'No':
                 if type(df['Dias_fin_Recfirma'][c]) != str:
-                    if df['Dias_fin_Recfirma'][c].days < 0:
+                    if df['Dias_fin_Recfirma'][c] < 0:
                         r2.append(df['Proyecto'][c])
             c += 1
         res = ''

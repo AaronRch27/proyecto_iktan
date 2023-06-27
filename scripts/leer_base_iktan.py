@@ -69,11 +69,12 @@ def procesar(documento):
           'VICTOR RAMIRO ESPINA CASAS',
           'ANA AGLAE FLORES AGUILAR'],
         'Control y Logística': ['ALEXEI PRADEL HERNANDEZ',
-           'MA. GUADALUPE ADAME SALGADO',
+          # 'MA. GUADALUPE ADAME SALGADO',
           'KARLA FABIOLA ACEVEDO BERNARDINO',
-           'ANTONIO ROMERO LEYVA',
+          # 'ANTONIO ROMERO LEYVA',
           'YOLISMA IVETTE LOPEZ CERON',
-          'DIANA LETICIA ALCALA GONZALEZ']
+          # 'DIANA LETICIA ALCALA GONZALEZ',
+          'EDWIN HECTOR PINEDA LOPEZ']
         }
     plantilla = []#esta variable contiene los nombres de todos los de Oficinas Centrales
     for k in equipos_nom:
@@ -100,7 +101,10 @@ def procesar(documento):
         'CNDHE':'Operación Estratégica',
         'vacio':'Sin equipo asignado'
         }
-    
+    #crear variable con dias no laborales de inegi año,mes,dia
+    feriados = ['2023-02-06', '2023-03-20','2023-04-06','2023-04-07',
+                '2023-05-01', '2023-05-05', '2023-07-08', '2023-09-16',
+                '2023-11-02', '2023-11-20', '2023-12-25']
     
     
     df.insert(1,'Proyecto',[proyectos[x[-4]] if len(x)<8 else 'vacio' for x in df['Folio']],allow_duplicates=False)
@@ -138,8 +142,14 @@ def procesar(documento):
             proy = df['Proyecto'][c]
             f_OC = pd.to_datetime(f_corte[proy][0],format="%d/%m/%Y %H:%M:%S")
             f_Fir = pd.to_datetime(f_corte[proy][1],format="%d/%m/%Y %H:%M:%S")
-            d_OC.append(f_OC - f_est)
-            d_firma.append(f_Fir - f_est)
+            # d_OC.append(f_OC - f_est)
+            d_OC.append(round(np.busday_count(hoy.date(),
+                                   f_OC.date(),
+                                   holidays=feriados)))
+            #d_firma.append(f_Fir - f_est)
+            d_firma.append(round(np.busday_count(hoy.date(),
+                                   f_Fir.date(),
+                                   holidays=feriados)))
         except:
             d_OC.append('Error en fechas')
             d_firma.append('Error en fechas')
@@ -214,21 +224,65 @@ def procesar(documento):
                'ALEXEI PRADEL HERNANDEZ'] #jefes de equipo que designan
     nndiasOC = [] #conteo de días que tiene un cuestionario desde su llegada a oficinas centrales para asignacion y revision
     nndiasrevOC = []#conteo de dias que tiene un cuestionario luego de ser asignado por jefe de equipo
-    #crear variable con dias no laborales de inegi año,mes,dia
-    feriados = ['2023-02-06', '2023-03-20','2023-04-06','2023-04-07',
-                '2023-05-01', '2023-05-05', '2023-07-08', '2023-09-16',
-                '2023-11-02', '2023-11-20', '2023-12-25']
+    
     # borrar = []
     ntest = ntest.reset_index(drop=True)
     for val in list(ntest['Usuario']):
         if val not in plantilla:
+            var_alfa = 0
             if 'Revisión OC' in ntest.loc[fila,'Estatus']:
-                ntest.loc[fila,'Estatus'] = 'Pendiente' 
-                ntest.loc[fila,'Usuario'] = 'Por asignar'
+                if ntest.loc[fila,'Estatus']== 'Revisión OC (1)':#acotarlo a la revision 1 porque ahí todavía no es asignado
+                    ntest.loc[fila,'Estatus'] = 'Pendiente' 
+                    ntest.loc[fila,'Usuario'] = 'Por asignar'
+                    var_alfa = 1
+                else: #son revisiones oc más de 1
+                    #buscar la observacion para obtener al ultimo responsable designado
+                    responsbale_revisor = 'No asignado' #previamente asignado, por fdefecto es no asignado pero cambiará
+                    historial_folio=df[df['Folio']==ntest.loc[fila,'Folio']]
+                    historial_folio = historial_folio.reset_index(drop=True)
+                    #iterar para encontrar el estatus de asignación
+                    for i in list(historial_folio['Observación']):
+                        if 'Folio asignado a usuario para su revisón a:' in i:
+                            div_ob = i.split(':')
+                            responsbale_revisor = div_ob[-1]
+                            # ntest.loc[fila,'Estatus'] = 'En revisión' 
+                            ntest.loc[fila,'Usuario'] = responsbale_revisor
+                            
             #como no es usuario de los revisores ni jefes de equipo, se interpreta que su cuestionario no ha sido asignado para revision
-            docc = hoy - ntest.loc[fila,'Fecha'] 
-            nndiasOC.append(docc.days)
-            nndiasrevOC.append('No Asignado')
+            tam = historial_folio.shape
+            ultimo_stat = historial_folio.loc[tam[0]-1,'Registro']#no es penultimo sino ultimo
+            ultimo_stat = pd.to_datetime(ultimo_stat,format="%d/%m/%Y %H:%M:%S")
+            # dife = hoy - penultimo_stat
+            h_dif = hoy.hour - ultimo_stat.hour
+            if h_dif < 0:
+                n_hoy = hoy - pd.tseries.offsets.BusinessDay(1)
+                horasdia = 1 - (((h_dif*-1) * 10 / 24) * 0.1)
+                dife = np.busday_count(ultimo_stat.date(),
+                                       n_hoy.date(),
+                                       holidays=feriados)
+            if h_dif >= 0:
+                dife = np.busday_count(ultimo_stat.date(),
+                                   hoy.date(),
+                                   holidays=feriados)
+                horasdia = (h_dif * 10 / 24) * 0.1
+            #verificar si es día no laboral el ultimo estatus
+            
+            dia_descanso = np.is_busday([ultimo_stat.date()],holidays=feriados).tolist()
+            if not dia_descanso[0]:
+                nndiasOC.append(round(dife + horasdia,1)+1)#Se suma uno para ajutsar porque lo enviaron en día no laboral y para que no sea mayor que la asignación de revisión OC
+            if dia_descanso[0]:
+                nndiasOC.append(round(dife + horasdia,1)) #por menos uno para pasarlo a positivo
+            
+            # dife = np.busday_count(ntest.loc[fila,'Fecha'].date(),
+            #                        hoy.date(),
+            #                        holidays=feriados)
+            #aquí se agrega directamente lo mismo porque como el útlimo estatus es de otra persona fuera de OC pues eso
+            # nndiasrevOC.append(round(dife + horasdia,1))
+            #Hacer distinción en el cálculo si es primera revisión y no está asignado, o si ya es segunda revisión y hay un repsonsable revisor asignado
+            if var_alfa:
+                nndiasrevOC.append('NA')
+            if not var_alfa:
+                nndiasrevOC.append(round(dife + horasdia,1))
             
         if val in plantilla:
             ntest.loc[fila,'Estatus'] = 'En revisión'  #dado que el equipo lo tiene debe cambiar este estatus a revision
@@ -257,18 +311,43 @@ def procesar(documento):
                                    hoy.date(),
                                    holidays=feriados)
                 horasdia = (h_dif * 10 / 24) * 0.1
-                       
-            nndiasOC.append(round(dife + horasdia,1)) #por menos uno para pasarlo a positivo
+            #verificar si es día de descanso el último estatus
+            
+            dia_descanso = np.is_busday([penultimo_stat.date()],holidays=feriados).tolist()
+            if not dia_descanso[0]:
+                nndiasOC.append(round(dife + horasdia,1)+1)#Se suma uno para ajutsar porque lo enviaron en día no laboral y para que no sea mayor que la asignación de revisión OC           
+            if dia_descanso[0]:
+                nndiasOC.append(round(dife + horasdia,1)) #por menos uno para pasarlo a positivo
+            
             # dlaborales.append(np.busday_count(hoy.date(), #este solo sirve para prueba, no tiene otra utilidad
                                               # penultimo_stat.date(),
                                               # holidays=feriados))
             # dife = hoy - ntest.loc[fila,'Fecha'] 
-            dife = np.busday_count(ntest.loc[fila,'Fecha'].date(),
+            ultimo_stat = historial_folio.loc[tam[0]-1,'Registro']
+            ultimo_stat = pd.to_datetime(ultimo_stat,format="%d/%m/%Y %H:%M:%S")
+            
+            h_dif = hoy.hour - ultimo_stat.hour
+            # print(ultimo_stat,hoy, h_dif)
+            if h_dif < 0:
+                n_hoy = hoy - pd.tseries.offsets.BusinessDay(1)
+                horasdia = 1 - (((h_dif*-1) * 10 / 24) * 0.1)
+                dife = np.busday_count(ultimo_stat.date(),
+                                       n_hoy.date(),
+                                       holidays=feriados)
+            if h_dif >= 0:
+                dife = np.busday_count(ultimo_stat.date(),
                                    hoy.date(),
                                    holidays=feriados)
-            nndiasrevOC.append(dife)
-        retraso = hoy - ntest.loc[fila,'Fecha'] 
-        if retraso.days > 5:
+                horasdia = (h_dif * 10 / 24) * 0.1
+            # dife = np.busday_count(ultimo_stat.date(),
+            #                        hoy.date(),
+            #                        holidays=feriados)
+            nndiasrevOC.append(round(dife + horasdia,1))
+        # retraso = hoy - ntest.loc[fila,'Fecha'] 
+        retraso = np.busday_count(ultimo_stat.date(), 
+                                  hoy.date(),
+                                  holidays=feriados) 
+        if retraso > 5:
             #si hay retraso no se cambia al usuario
             # ntest.loc[fila,'Usuario'] = 'Retraso en aisgnación'
             ntest.loc[fila,'Estatus'] = 'FueraT'
@@ -310,6 +389,7 @@ def procesar(documento):
                  'Equipo': [],
                  'Rev_OC?': [],
                  'Dias_inicio_RevOC': [],
+                 'el_cuestionario_aplica?': [],
                  'Recuperado_firma_y_sello?': [],
                  'Dias_fin_Recfirma': [],
                  'Días_RevOC-último_estatus': []
@@ -336,6 +416,7 @@ def procesar(documento):
             uctu[val] = 'NA'
         fys = 'No'
         OC = 'No'
+        aplica = 'Sí'
         c = 0
         for val in trabajar['Estatus']:
             if val in uctu:
@@ -345,15 +426,21 @@ def procesar(documento):
                 fys = 'Sí'
             if 'Revisión OC' in val:
                 OC = 'Sí'
+            if 'No aplica (1)' in val:
+                aplica = 'No'
             
             c += 1
         estructura['Recuperado_firma_y_sello?'].append(fys)
         estructura['Rev_OC?'].append(OC)
+        estructura['el_cuestionario_aplica?'].append(aplica)
         #calcular los días desde primera revision OC hasta su último estatus de revision
         if OC == 'Sí':
             # inicio = estructura['Revisión OC (1)'][c1]
             inicio = uctu['Revisión OC (1)']
-            dias = (ultimo-inicio).days
+            #dias = (ultimo-inicio).days
+            dias = round(np.busday_count(inicio.date(),
+                                   ultimo.date(),
+                                   holidays=feriados),1)
             estructura['Días_RevOC-último_estatus'].append(dias)
         if OC == 'No':
             estructura['Días_RevOC-último_estatus'].append('No aplica')
@@ -376,6 +463,8 @@ def procesar(documento):
         censos.remove('vacio')
     cen_can = {} #cantidad de cuestionarios
     avan = []
+    revi = []
+    liber = []
     for censo in censos:
         bb = df.loc[df['Proyecto']==censo]
         cantidad = len(list(bb['Folio'].unique()))
@@ -383,28 +472,44 @@ def procesar(documento):
         #otro proceso dentro de esta iteracion
         # bb = df.loc[df['Proyecto']==censo]
         filtros = list(bb['Folio'].unique())
-        r = 0
+        r = 0 #suma de recuperados con firma y sello--concluidos
+        OCCC = 0 #suma de revisiones
+        lib = 0 #suma de cuestionarios revisados
         for filtro in filtros:
             bb1 = bb.loc[bb['Folio']==filtro]
             sta = list(bb1['Estatus'])
             suma = False
+            suma1 = False
+            suma2 = False
             for es in sta:
+                if 'Revisión OC' in es:
+                    suma1 = True
+                if 'En proceso de firma y sello' in es:
+                    suma2 = True
                 if 'Recuperado con firma y sello' in es:
                     suma = True
                     break
             if suma:
                 r += 1
+            if suma1:
+                OCCC += 1
+            if suma2:
+                lib += 1
         avan.append(r)
+        revi.append(OCCC)
+        liber.append(lib)
         
     avance = {'Equipo':[equipos[x] for x in list(cen_can.keys())],
            'Programa':list(cen_can.keys()),
            'Cuestionarios':list(cen_can.values()),
-           'Avance':avan,
-           'Porcentaje':[]
+           'revisiones':revi,
+           'cuestionarios_liberados':liber,
+           'Avance_cuestionarios_recuperados':avan,
+           'Porcentaje_de_conclusion':[]
            }
     c = 0
     for val in list(cen_can.values()):
-        avance['Porcentaje'].append(f'{round(avan[c]*100/val)}%')
+        avance['Porcentaje_de_conclusion'].append(f'{round(avan[c]*100/val)}%')
         c += 1
     avance = pd.DataFrame(avance)
     
@@ -544,9 +649,13 @@ def procesar(documento):
     
     
 
-def save(rt,ntest,historial,avance,desempe,jefes):
+def save(rt,ntest,historial,avance,desempe,jefes,f_cortes):
+    #quitar los caracteres de la string de feha para guardar el archivo con ese nombre
+    fecha = f_cortes.replace('/','-')
+    fecha = fecha.replace(' ','-')
+    fecha = fecha.replace(':','-')
 # historial.to_csv('Historial_de_revision_OC.csv',index=False,encoding='utf-8-sig')
-    with pd.ExcelWriter('analisis_seguimiento.xlsx') as writer:  
+    with pd.ExcelWriter(f'analisis_seguimiento{fecha}.xlsx') as writer:  
         rt.to_excel(writer, sheet_name='Revision_ROCE',index=False)
         ntest.to_excel(writer, sheet_name='Orden_atencion',index=False)
         historial.to_excel(writer, sheet_name='historial',index=False)
