@@ -739,6 +739,8 @@ for folio in folios_unicos:
                 
                 
         fila += 1
+index_f = list(MC['dia_laboral'])
+index_f = index_f[:-1]
 del MC['dia_laboral'] #borrar columna de indices para que no se duplique
 del MDF['dia_laboral']
 #con esto ya se tiene el frame en MC con los cuestionarios que tienen o tenían por día. Sin embargo falta hacer una limpieza de los días donde no tuvieron nada y del último día porque ese no da un buen cálculo.
@@ -746,12 +748,19 @@ del MDF['dia_laboral']
 maximo_carga_por_dia = []
 promedio_carga_trabajo = []
 n_retrasos_en_rev = []
+n_retrasos_7 = []
+num_revisados = []
+max_rev_al_dia = []
+matriz_rev = {}
 for usuario in desempe['usuario']:
     valores = list(MC[usuario])
     if sum(valores) == 0:
         maximo_carga_por_dia.append('NA')
         promedio_carga_trabajo.append('NA')
         n_retrasos_en_rev.append('NA')
+        n_retrasos_7.append('NA')
+        num_revisados.append('NA')
+        max_rev_al_dia.append('NA')
     else:
         inicio_rev = 0
         for valor in valores:
@@ -765,26 +774,49 @@ for usuario in desempe['usuario']:
         folio_r = list(MDF[usuario])
         folio_efectivo = folio_r[inicio_rev:-1]
         fol_tot = {}
-        todos = []
-        for lista in folio_efectivo:
+        num_revi = [0]
+        max_rev_al = 0
+        
+        for n, lista in enumerate(folio_efectivo):
+            if n > 0:
+                rev = 0
+                #iterar folios de dia anterior
+                for fol in folio_efectivo[n-1]:
+                    if fol not in lista:
+                        rev +=1
+                num_revi.append(rev)
+                max_rev_al = max([max_rev_al,rev])
             for fol in lista:
-                if fol.endswith('(1)'):
-                    todos.append(fol)
                 if fol not in fol_tot:
                     fol_tot[fol] = 1
                 else:
                     fol_tot[fol] += 1
         cuest_retrasados = [] #lista con los cuestionarios retrasados
+        siete = []
         for k in fol_tot:
             if fol_tot[k] > 5:
                 cuest_retrasados.append(k)
+            if fol_tot[k] > 7:
+                siete.append(k)
         n_retrasos_en_rev.append(len(cuest_retrasados))
-        if usuario == 'VICTOR RAMIRO ESPINA CASAS':
-            print(len(list(set(todos))))
+        n_retrasos_7.append(len(siete))
+        num_revisados.append(sum(num_revi)/len(num_revi))
+        max_rev_al_dia.append(max_rev_al)
+        #rellenar columna con ceros para matriz de interpretacion
+        relleno = [0 for i in range(inicio_rev)]
+        matriz_rev[usuario] = relleno+num_revi
+        # print(usuario,num_revi,len(relleno+num_revi))
+
 desempe['maximo_carga_por_dia'] = maximo_carga_por_dia
 desempe['promedio_carga_trabajo_por_dia'] = promedio_carga_trabajo
-desempe['cantidad_cuestionarios_con_retraso_en_revision'] = n_retrasos_en_rev
+desempe['revisiones_con_mas_5_dias'] = n_retrasos_en_rev
+desempe['revisiones_con_mas_7_dias'] = n_retrasos_7
+desempe['promedio_reviosnes_al_dia'] = num_revisados
+desempe['maximo_revisiones_al_dia'] = max_rev_al_dia
+
+frame_rev = pd.DataFrame(matriz_rev,index=index_f)
 with pd.ExcelWriter('prueba_carga_trabajo.xlsx') as writer:  
     desempe.to_excel(writer, sheet_name='desempeño',index=False)
     MC.to_excel(writer, sheet_name='Dias_carga_cuestionarios')
     MDF.to_excel(writer, sheet_name='Dias_carga_cuestionarios_folio')
+    frame_rev.to_excel(writer, sheet_name='revisiones_por_dia')
