@@ -8,7 +8,7 @@ Created on Wed Jul 27 17:35:44 2022
 import pandas as pd
 from datetime import datetime
 import numpy as np
-
+from gen_graf import generar_imagenes
 
 hoy =  datetime.now()
 #leer archivo descargado de iktan
@@ -69,11 +69,12 @@ def procesar(documento):
           'VICTOR RAMIRO ESPINA CASAS',
           'ANA AGLAE FLORES AGUILAR'],
         'Control y Logística': ['ALEXEI PRADEL HERNANDEZ',
-           'MA. GUADALUPE ADAME SALGADO',
+          # 'MA. GUADALUPE ADAME SALGADO',
           'KARLA FABIOLA ACEVEDO BERNARDINO',
-           'ANTONIO ROMERO LEYVA',
+          # 'ANTONIO ROMERO LEYVA',
           'YOLISMA IVETTE LOPEZ CERON',
-          'DIANA LETICIA ALCALA GONZALEZ']
+          # 'DIANA LETICIA ALCALA GONZALEZ',
+          'EDWIN HECTOR PINEDA LOPEZ']
         }
     plantilla = []#esta variable contiene los nombres de todos los de Oficinas Centrales
     for k in equipos_nom:
@@ -502,7 +503,7 @@ def procesar(documento):
            'Programa':list(cen_can.keys()),
            'Cuestionarios':list(cen_can.values()),
            'revisiones':revi,
-           'cuestionrios_liberados':liber,
+           'cuestionarios_liberados':liber,
            'Avance_cuestionarios_recuperados':avan,
            'Porcentaje_de_conclusion':[]
            }
@@ -642,13 +643,190 @@ def procesar(documento):
         a = {'Error':['Pocos datos para calcular métricas de desempeño']}
         desempe = pd.DataFrame(a)
         desem_jefes = pd.DataFrame(a)
+    #Apartado para generar un reporte de carga de trabajo a los responsables revisores, por día laboral
+    #Primer paso es generar una matriz donde los indices sean los dias laborales, y las columnas los nombres de los responsbales revisores
+    matriz_carga = {'dia_laboral':[]}
+    matriz_folios_carga = {'dia_laboral':[]}
+    #agregar responsables revisores
+    for user in control['usuario']:
+        matriz_carga[user] = []
+        matriz_folios_carga[user] = []
+    #agregar días indice pero desde abril, ya que enero a marzo no hay revision en oc
+    filas_fecha = pd.date_range(start=pd.to_datetime('01/04/2023 00:00:00',format="%d/%m/%Y %H:%M:%S"),
+                                end=pd.to_datetime(fecha,format="%d/%m/%Y %H:%M:%S")#termina en la fecha de corte de la base de datos (dia que se descargó)
+                                )
+    #corroborar que sean días laborales en inegi
+    for date in list(filas_fecha):
+        comprobar = np.is_busday([date.date()],holidays=feriados)
+        comprobar = comprobar.tolist()
+        if comprobar[0]:
+            matriz_carga['dia_laboral'].append(date.date())
+            matriz_folios_carga['dia_laboral'].append(date.date())
+
+    #llenar con ceros
+    for key in matriz_carga:
+        if key != "dia_laboral":
+            matriz_carga[key] = [0 for i in matriz_carga['dia_laboral']]
+            matriz_folios_carga[key] = [[] for i in matriz_carga['dia_laboral']] # esta no se vair a dataframe todavía
+    MC = pd.DataFrame(matriz_carga,index=matriz_carga['dia_laboral'])
+    MDF = pd.DataFrame(matriz_folios_carga,index=matriz_folios_carga['dia_laboral'])
+    #inicio de conteo de cuestionarios por día
+    #filtrar base por folios unicos
+    trabajo_dias = df.copy()#copiado del frame original de iktan
+    trabajo_dias.drop([df.shape[0]-1,df.shape[0]-2],axis=0,inplace=True)
+    folios_unicos = list(trabajo_dias['Folio'].unique())
+    for folio in folios_unicos:
+        frame = trabajo_dias.loc[trabajo_dias['Folio']==folio]
+        frame = frame.reset_index(drop=True)
+        #identificar al responsable revisor del folio
+        responsbale_revisor = False
+        for i in list(frame['Observación']):
+            if 'Folio asignado a usuario para su revisón a:' in i:
+                div_ob = i.split(':')
+                responsbale_revisor = div_ob[-1]
+        if not responsbale_revisor:
+            #de no existir se pasa al siguiente folio
+            continue
+        # if responsbale_revisor==' RUBI SAMANTHA MEDRANO MARTINEZ':
+        #     print(folio)
+        fila = 0
+        for estatus in list(frame['Estatus']):
+            if 'Revisión OC' in estatus:
+                num_rev  = estatus[-3:]
+                # print(estatus,frame.loc[fila,'Usuario'])
+                if '(1)' in estatus and frame.loc[fila,'Usuario'] in excluir:
+                    fecha_inicial_rev = pd.to_datetime(frame.loc[fila,'Registro'],format="%d/%m/%Y %H:%M:%S")
+                if '(1)' not in estatus:
+                    fecha_inicial_rev = pd.to_datetime(frame.loc[fila,'Registro'],format="%d/%m/%Y %H:%M:%S")
+                if '(1)' in estatus and frame.loc[fila,'Usuario'] not in excluir:
+                    fila += 1
+                    continue
+                try:#porque quizá el indcie excede el len del frame y podría ser error.
+                    fecha_fin_rev = pd.to_datetime(frame.loc[fila+1,'Registro'],format="%d/%m/%Y %H:%M:%S")
+                except:
+                    fecha_fin_rev = hoy.date()
+                lista_dias = list(pd.date_range(start=fecha_inicial_rev,
+                                            end=fecha_fin_rev
+                                            ))
+                for dia in lista_dias:
+                    try:
+                        MC.loc[dia.date(),responsbale_revisor[1:]] += 1
+                        MDF.loc[dia.date(),responsbale_revisor[1:]].append(folio+'-'+num_rev)
+                    except:
+                        
+                        pass
+                    
+                    
+            fila += 1
+    index_f1 = list(MC['dia_laboral'])
+    index_f = index_f1[:-1]
+    del MC['dia_laboral'] #borrar columna de indices para que no se duplique
+    del MDF['dia_laboral']
+    #con esto ya se tiene el frame en MC con los cuestionarios que tienen o tenían por día. Sin embargo falta hacer una limpieza de los días donde no tuvieron nada y del último día porque ese no da un buen cálculo.
+    #iterar por usuario en frame de avance
+    maximo_carga_por_dia = []
+    promedio_carga_trabajo = []
+    n_retrasos_en_rev = []
+    n_retrasos_7 = []
+    num_revisados = []
+    max_rev_al_dia = []
+    matriz_rev = {}
+
+    for usuario in desempe['usuario']:
+        valores = list(MC[usuario])
+        if sum(valores) == 0:
+            maximo_carga_por_dia.append('NA')
+            promedio_carga_trabajo.append('NA')
+            n_retrasos_en_rev.append('NA')
+            n_retrasos_7.append('NA')
+            num_revisados.append('NA')
+            max_rev_al_dia.append('NA')
+        else:
+            inicio_rev = 0
+            for valor in valores:
+                if valor != 0:#detectar el primer cero para sacar su indice y trabajar sobre ese
+                    break
+                inicio_rev += 1
+            efectivos = valores[inicio_rev:-1]#menos uno porque no interesa el dato final ya que ese no es preciso por ser fecha de corte de la descarga de la base de datos
+            maximo_carga_por_dia.append(max(efectivos))
+            promedio_carga_trabajo.append(sum(efectivos)/len(efectivos))
+            #conteo de cuestionarios con retraso
+            folio_r = list(MDF[usuario])
+            folio_efectivo = folio_r[inicio_rev:-1]
+            fol_tot = {}
+            num_revi = [0]
+            max_rev_al = 0
+            atraso = 0
+            #apartado para contar numero de revisiones hechas en el día
+            lcinco = []
+            lsiete1 = [] 
+            for n, lista in enumerate(folio_efectivo):
+                cinco = 0
+                siete1 = 0 
+                if n > 0:
+                    rev = 0
+                    #iterar folios de dia anterior
+                    for fol in folio_efectivo[n-1]:
+                        if fol not in lista:
+                            rev +=1
+                    num_revi.append(rev)
+                    max_rev_al = max([max_rev_al,rev])
+                #contar el numero de veces quue aparece el folio en los días de revision
+                for fol in lista:
+                    if fol not in fol_tot:
+                        fol_tot[fol] = 1
+                    else:
+                        fol_tot[fol] += 1
+                    #conteo de folio con retraso 5 y 7
+                    if fol_tot[fol] > 5:
+                        cinco += 1
+                    if fol_tot[fol] > 7:
+                        siete1 += 1
+                lcinco.append(cinco)
+                lsiete1.append(siete1)
+            #generarla imagen por usuario
+            generar_imagenes(index_f1[inicio_rev:-1],
+                             usuario,efectivos,
+                             num_revi,lcinco,
+                             lsiete1)
+            #apartado para calcular el numero de folios con retrasos 
+            cuest_retrasados = [] #lista con los cuestionarios retrasados
+            siete = []
+            for k in fol_tot:
+                if fol_tot[k] > 5:
+                    cuest_retrasados.append(k)
+                if fol_tot[k] > 7:
+                    siete.append(k)
+            n_retrasos_en_rev.append(len(cuest_retrasados))
+            n_retrasos_7.append(len(siete))
+            num_revisados.append(sum(num_revi)/len(num_revi))
+            max_rev_al_dia.append(max_rev_al)
+            #rellenar columna con ceros para matriz de interpretacion
+            relleno = [0 for i in range(inicio_rev)]
+            matriz_rev[usuario] = relleno+num_revi
+
+            # print(usuario,num_revi,len(relleno+num_revi))
+
+    desempe['maximo_carga_por_dia'] = maximo_carga_por_dia
+    desempe['promedio_carga_trabajo_por_dia'] = promedio_carga_trabajo
+    desempe['revisiones_con_mas_5_dias'] = n_retrasos_en_rev
+    desempe['revisiones_con_mas_7_dias'] = n_retrasos_7
+    desempe['promedio_revisiones_al_dia'] = num_revisados
+    desempe['maximo_revisiones_al_dia'] = max_rev_al_dia
+
+    frame_rev = pd.DataFrame(matriz_rev,index=index_f)
+    with pd.ExcelWriter('prueba_carga_trabajo.xlsx') as writer:  
+        desempe.to_excel(writer, sheet_name='desempeño',index=False)
+        MC.to_excel(writer, sheet_name='Dias_carga_cuestionarios')
+        MDF.to_excel(writer, sheet_name='Dias_carga_cuestionarios_folio')
+        frame_rev.to_excel(writer, sheet_name='revisiones_por_dia')
         
-    return rt, ntest, historial, fecha, avance, desempe, desem_jefes
+    return rt, ntest, historial, fecha, avance, desempe, desem_jefes, MC, MDF, frame_rev
 
     
     
 
-def save(rt,ntest,historial,avance,desempe,jefes,f_cortes):
+def save(rt,ntest,historial,avance,desempe,jefes,MC,MDF,frame_rev,f_cortes):
     #quitar los caracteres de la string de feha para guardar el archivo con ese nombre
     fecha = f_cortes.replace('/','-')
     fecha = fecha.replace(' ','-')
@@ -660,6 +838,9 @@ def save(rt,ntest,historial,avance,desempe,jefes,f_cortes):
         historial.to_excel(writer, sheet_name='historial',index=False)
         avance.to_excel(writer, sheet_name='avance',index=False)
         desempe.to_excel(writer, sheet_name='desempe',index=False)
+        MC.to_excel(writer, sheet_name='Dias_carga_cuestionarios')
+        MDF.to_excel(writer, sheet_name='Dias_carga_cuestionarios_folio')
+        frame_rev.to_excel(writer, sheet_name='revisiones_por_dia')
         jefes.to_excel(writer, sheet_name='desempe_jefes',index=False)
     
     return
