@@ -6,15 +6,17 @@ Created on Wed Aug 24 13:29:07 2022
 """
 
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
+from gen_graf import generar_imagenes
+from mensajes import mensajes
 
 
 hoy =  datetime.now()
 
 #leer archivo descargado de iktan
 
-documento = pd.read_excel('xIktan_20230607094254161_reporteSegumiento.xlsx')
+documento = pd.read_excel('xIktan_20230822100448548_reporteSegumiento.xlsx')
 
 #formar nuevo dataframe
 rep = documento.fillna('vacio') #llenar espacios vacios con la palabra 'vacio'
@@ -72,7 +74,9 @@ equipos_nom = {
       'KARLA FABIOLA ACEVEDO BERNARDINO',
       # 'ANTONIO ROMERO LEYVA',
       'YOLISMA IVETTE LOPEZ CERON',
-      'DIANA LETICIA ALCALA GONZALEZ']
+      'URIEL EDUARDO CAMPUZANO HERNANDEZ',
+      # 'DIANA LETICIA ALCALA GONZALEZ',
+      'EDWIN HECTOR PINEDA LOPEZ']
     }
 
 #lineas para conseguir quienes están en la base y quienes no
@@ -481,6 +485,8 @@ cen_can = {} #cantidad de cuestionarios
 avan = []
 revi = []
 liber = []
+NoAp = []
+
 for censo in censos:
     bb = df.loc[df['Proyecto']==censo]
     cantidad = len(list(bb['Folio'].unique()))
@@ -491,41 +497,54 @@ for censo in censos:
     r = 0 #suma de recuperados con firma y sello--concluidos
     OCCC = 0 #suma de revisiones
     lib = 0 #suma de cuestionarios revisados
+    nop = 0 #no aplica
+    if censo == 'CNGE':
+        revisiss={'Entidad':[],'Modulo':[],'folio':[]}
     for filtro in filtros:
         bb1 = bb.loc[bb['Folio']==filtro]
         sta = list(bb1['Estatus'])
         suma = False
         suma1 = False
         suma2 = False
+        suma3 = False
         for es in sta:
+            if 'No aplica' in es:
+                suma3 = True
             if 'Revisión OC' in es:
                 suma1 = True
-            if 'En proceso de firma y sello' in es:
+            if 'En proceso de firma y sello (1)' in es:
                 suma2 = True
-            if 'Recuperado con firma y sello' in es:
+            if 'Recuperado con firma y sello (1)' in es:
                 suma = True
-                break
-        if suma:
+                
+        if suma and not suma3:
             r += 1
         if suma1:
             OCCC += 1
         if suma2:
             lib += 1
+        if suma3:
+            if censo=='CNGE':
+                revisiss['Entidad'].append(list(bb1['Entidad'])[0])
+                revisiss['Modulo'].append(list(bb1['Módulo'])[0])
+                revisiss['folio'].append(filtro)
+            nop += 1
     avan.append(r)
     revi.append(OCCC)
     liber.append(lib)
-    
+    NoAp.append(nop)
 avance = {'Equipo':[equipos[x] for x in list(cen_can.keys())],
        'Programa':list(cen_can.keys()),
        'Cuestionarios':list(cen_can.values()),
        'revisiones':revi,
-       'cuestionrios_liberados':liber,
-       'Avance_cuestionarios_recuperados':avan,
-       'Porcentaje_de_conclusion':[]
+       'cuestionarios_liberados':liber,
+       'Avance_recuperados_conFyS':avan,
+       'Cuestionarios_NoAplica': NoAp,
+       'Porcentaje_de_conclusion(recup_firmaysello_y_NoAplica)':[]
        }
 c = 0
 for val in list(cen_can.values()):
-    avance['Porcentaje_de_conclusion'].append(f'{round(avan[c]*100/val)}%')
+    avance['Porcentaje_de_conclusion(recup_firmaysello_y_NoAplica)'].append(f'{round((avan[c]+NoAp[c])*100/val)}%')
     c += 1
 avance = pd.DataFrame(avance)
 
@@ -552,7 +571,10 @@ control_jefes = {
     'equipo':[],
     'cuestionarios_asignados':[],
     'dias_prom_asig_cuestionario':[],
-    'dias_max_asig_cuestionario':[]
+    'dias_max_asig_cuestionario':[],
+    'dias_max_asig_cuestionario(folio)':[],
+    'cuest_asignados_fuerade_horario_lab': [],
+    'cuest_asignados_fuerade_horario_lab(folio)':[]
     }
 for usuario in plantilla: #itearar por cada usuario en el directorio de OC
     if usuario not in excluir: #sacar a los jefes   
@@ -611,7 +633,7 @@ for usuario in plantilla: #itearar por cada usuario en el directorio de OC
         # print(usuario,len(fechas),fechas,len(n_revisiones),sum(n_revisiones)) #los len no son iguales porque hay más revisiones y el numero de aquí solo representa la cantidad de ellas, mientras que las fechas es una tupla por revision
         control['promedio_dias_revision'].append(sum(fechas) / len(fechas) if len(fechas)>0 else 0)
         control['prom_revisiones_por_cuestionario'].append(sum(n_revisiones) / len(n_revisiones) if len(n_revisiones)>0 else 0)
-        control['Max_dias_en_rev'].append(max(fechas) if fechas else 'NA')
+        control['Max_dias_en_rev'].append(max(fechas) if fechas else 0)
         
             
     #ahora conseguir métricas para los jefes
@@ -626,6 +648,8 @@ for usuario in plantilla: #itearar por cada usuario en el directorio de OC
         control_jefes['usuario'].append(usuario)
         control_jefes['cuestionarios_asignados'].append(len(cuestionarios_asignados))
         fechas = []
+        folio_fechas = []
+        asig_fuera_lab_fol = []
         for cuestionario in cuestionarios_asignados:
             folio = general.loc[general['Folio']==cuestionario]#solo con los folios de un cuestionario--es base pequeña
             folio = folio.reset_index(drop=True)
@@ -635,9 +659,20 @@ for usuario in plantilla: #itearar por cada usuario en el directorio de OC
                 if usuario == proceso and revi[c] in revOC:#este filtro es para solo seleccionar al usuario cuando hizo un estatus de asignacion revision OC numero que sea
                     f_ini = folio['Registro'][c-1]
                     f_term = folio['Registro'][c]
+                    folio1_rev = revi[c-1]
+                    folio2_rev = revi[c]
+                    if folio1_rev in revOC and folio2_rev in revOC:
+                        #esta excepción deriva de una doble asignación de cuestionario. Esto no se debe tomar en cuenta [ver caso de Nayeli con Alexei]
+                        if usuario == list(folio['Usuario'])[c-1]:
+                            continue
                     inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
                     term = datetime.strptime(f_term,"%d/%m/%Y %H:%M:%S")
                     h_dif = term.hour - inicio.hour
+                    #conseguir numero y folios asignados fuera de horario laboral o de días laborales
+                    comprobar = np.is_busday([term.date()],holidays=feriados)
+                    comprobar = comprobar.tolist()
+                    if term.hour > 17 or not comprobar[0]:
+                        asig_fuera_lab_fol.append(cuestionario)
                     
                     # resta = np.busday_count(inicio.date(),
                     #                        term.date(),
@@ -654,10 +689,22 @@ for usuario in plantilla: #itearar por cada usuario en el directorio de OC
                                            holidays=feriados)
                         horasdia = (h_dif * 10 / 24) * 0.1
                     fechas.append(round(dife + horasdia,1)) 
+                    folio_fechas.append(cuestionario)
+                    #sigueientes dos lineas son para comprobación de retrasos en asignacion para nayeli
+                    # if round(dife + horasdia,1) > 6:
+                    #     print(cuestionario,usuario,round(dife + horasdia,1))
                 c += 1
         # print(usuario,fechas)
         control_jefes['dias_prom_asig_cuestionario'].append(sum(fechas) / len(fechas) if len(fechas)>0 else 0)
-        control_jefes['dias_max_asig_cuestionario'].append(max(fechas) if len(fechas)>0 else 'No hay datos suficientes')
+        control_jefes['dias_max_asig_cuestionario'].append(max(fechas) if len(fechas)>0 else 0)
+        control_jefes['cuest_asignados_fuerade_horario_lab'].append(len(asig_fuera_lab_fol))
+        control_jefes['cuest_asignados_fuerade_horario_lab(folio)'].append(asig_fuera_lab_fol)
+        folio_fech = ''
+        for i,f in enumerate(fechas):
+            if f == max(fechas):
+                folio_fech = folio_fechas[i]   
+                break
+        control_jefes['dias_max_asig_cuestionario(folio)'].append(folio_fech)
             
 desempe = pd.DataFrame(control)
 desem_jefes = pd.DataFrame(control_jefes)
@@ -666,9 +713,11 @@ desem_jefes = pd.DataFrame(control_jefes)
 #Apartado para generar un reporte de carga de trabajo a los responsables revisores, por día laboral
 #Primer paso es generar una matriz donde los indices sean los dias laborales, y las columnas los nombres de los responsbales revisores
 matriz_carga = {'dia_laboral':[]}
+matriz_folios_carga = {'dia_laboral':[]}
 #agregar responsables revisores
 for user in control['usuario']:
     matriz_carga[user] = []
+    matriz_folios_carga[user] = []
 #agregar días indice pero desde abril, ya que enero a marzo no hay revision en oc
 filas_fecha = pd.date_range(start=pd.to_datetime('01/04/2023 00:00:00',format="%d/%m/%Y %H:%M:%S"),
                             end=pd.to_datetime(fecha,format="%d/%m/%Y %H:%M:%S")#termina en la fecha de corte de la base de datos (dia que se descargó)
@@ -679,13 +728,15 @@ for date in list(filas_fecha):
     comprobar = comprobar.tolist()
     if comprobar[0]:
         matriz_carga['dia_laboral'].append(date.date())
+        matriz_folios_carga['dia_laboral'].append(date.date())
 
 #llenar con ceros
 for key in matriz_carga:
     if key != "dia_laboral":
         matriz_carga[key] = [0 for i in matriz_carga['dia_laboral']]
+        matriz_folios_carga[key] = [[] for i in matriz_carga['dia_laboral']] # esta no se vair a dataframe todavía
 MC = pd.DataFrame(matriz_carga,index=matriz_carga['dia_laboral'])
-
+MDF = pd.DataFrame(matriz_folios_carga,index=matriz_folios_carga['dia_laboral'])
 #inicio de conteo de cuestionarios por día
 #filtrar base por folios unicos
 trabajo_dias = df.copy()#copiado del frame original de iktan
@@ -708,30 +759,288 @@ for folio in folios_unicos:
     fila = 0
     for estatus in list(frame['Estatus']):
         if 'Revisión OC' in estatus:
+            num_rev  = estatus[-3:]
             # print(estatus,frame.loc[fila,'Usuario'])
             if '(1)' in estatus and frame.loc[fila,'Usuario'] in excluir:
-                fecha_inicial_rev = pd.to_datetime(frame.loc[fila,'Registro'],format="%d/%m/%Y %H:%M:%S")
+                fecha_inicial_rev = pd.to_datetime(frame.loc[fila,'Registro'].split(' ')[0],format="%d/%m/%Y")
             if '(1)' not in estatus:
-                fecha_inicial_rev = pd.to_datetime(frame.loc[fila,'Registro'],format="%d/%m/%Y %H:%M:%S")
+                fecha_inicial_rev = pd.to_datetime(frame.loc[fila,'Registro'].split(' ')[0],format="%d/%m/%Y")
             if '(1)' in estatus and frame.loc[fila,'Usuario'] not in excluir:
                 fila += 1
                 continue
             try:#porque quizá el indcie excede el len del frame y podría ser error.
-                fecha_fin_rev = pd.to_datetime(frame.loc[fila+1,'Registro'],format="%d/%m/%Y %H:%M:%S")
+                fecha_fin_rev = pd.to_datetime(frame.loc[fila+1,'Registro'].split(' ')[0],format="%d/%m/%Y")
             except:
-                fecha_fin_rev = hoy.date()
+                tomorrow =  hoy + timedelta(days=1)
+                fecha_fin_rev = tomorrow.date()
+            #igualar horas de fecha final para no saltar ningun día
+            # if folio == '152101':
+            #     resta = fecha_inicial_rev-fecha_fin_rev
+            #     print(resta)
             lista_dias = list(pd.date_range(start=fecha_inicial_rev,
                                         end=fecha_fin_rev
                                         ))
+            # if folio == '152101':
+                # print(fecha_inicial_rev,fecha_fin_rev,'estos')
+                # print(lista_dias)
             for dia in lista_dias:
                 try:
                     MC.loc[dia.date(),responsbale_revisor[1:]] += 1
-                    
+                    MDF.loc[dia.date(),responsbale_revisor[1:]].append(folio+'-'+num_rev)
                 except:
                     
                     pass
                 
                 
         fila += 1
+index_f1 = list(MC['dia_laboral'])
+index_f = index_f1[:-1]
+del MC['dia_laboral'] #borrar columna de indices para que no se duplique
+del MDF['dia_laboral']
+#con esto ya se tiene el frame en MC con los cuestionarios que tienen o tenían por día. Sin embargo falta hacer una limpieza de los días donde no tuvieron nada y del último día porque ese no da un buen cálculo.
+#iterar por usuario en frame de avance
+maximo_carga_por_dia = []
+promedio_carga_trabajo = []
+n_retrasos_en_rev = []
+n_retrasos_7 = []
+num_revisados = []
+max_rev_al_dia = []
+matriz_rev = {}
+retr_cuest_asig_fhlab = []
+retr_cuest_asig_fhlab_fol = []
+#matriz resumen solo es para el desarrollo!!! power bi
+matriz_resumen = {'Fecha':[],
+                  'Folio':[],
+                  'Censo':[],
+                  'Módulo':[],
+                  'Región':[],
+                  'Entidad':[],
+                  'Equipo':[],
+                  'Revisor':[],
+                  'Días_en_revisión':[],
+                  'Retraso+5':[],
+                  'Retraso+7':[],
+                  'Retraso+5_histórico':[],
+                  'Retraso+7_histórico':[]}
+foly_retr = {}
+for usuario in desempe['usuario']:
+    valores = list(MC[usuario])
+    if sum(valores) == 0:
+        maximo_carga_por_dia.append(0)
+        promedio_carga_trabajo.append(0)
+        n_retrasos_en_rev.append(0)
+        n_retrasos_7.append(0)
+        num_revisados.append(0)
+        max_rev_al_dia.append(0)
+        retr_cuest_asig_fhlab.append(0)
+        retr_cuest_asig_fhlab_fol.append(0)
+    else:
+        f1 = desempe.loc[desempe['usuario']==usuario]
+        equipo_revisor = list(f1['equipo']) 
+        inicio_rev = 0
+        for valor in valores:
+            if valor != 0:#detectar el primer cero para sacar su indice y trabajar sobre ese
+                break
+            inicio_rev += 1
+        efectivos = valores[inicio_rev:-1]#menos uno porque no interesa el dato final ya que ese no es preciso por ser fecha de corte de la descarga de la base de datos
+        maximo_carga_por_dia.append(max(efectivos))
+        promedio_carga_trabajo.append(sum(efectivos)/len(efectivos))
+        #conteo de cuestionarios con retraso
+        folio_r = list(MDF[usuario])
+        folio_efectivo = folio_r[inicio_rev:-1]
+        fol_tot = {}
+        num_revi = [0]
+        max_rev_al = 0
+        atraso = 0
+        fol_asig_hlab =  []
+        #apartado para contar numero de revisiones hechas en el día
+        lcinco = []
+        lsiete1 = [] 
+        for n, lista in enumerate(folio_efectivo):
+            cinco = 0
+            siete1 = 0 
+            if n > 0:
+                rev = 0
+                #iterar folios de dia anterior
+                for fol in folio_efectivo[n-1]:
+                    if fol not in lista:
+                        rev +=1
+                num_revi.append(rev)
+                max_rev_al = max([max_rev_al,rev])
+            #contar el numero de veces quue aparece el folio en los días de revision
+            for fol in lista:
+                inf_folio = df.loc[df['Folio']==fol[:-4]]
+                inf_folio = inf_folio.reset_index(drop=True)
+                matriz_resumen['Censo'].append(list(inf_folio['Proyecto'])[0])
+                matriz_resumen['Módulo'].append(list(inf_folio['Módulo'])[0])
+                matriz_resumen['Región'].append(list(inf_folio['Región'])[0])
+                matriz_resumen['Entidad'].append(list(inf_folio['Entidad'])[0])
+                matriz_resumen['Fecha'].append(index_f1[inicio_rev:-1][n])
+                matriz_resumen['Folio'].append(fol)
+                matriz_resumen['Equipo'].append(equipo_revisor[0])
+                matriz_resumen['Revisor'].append(usuario)
+                if fol not in fol_tot:
+                    fol_tot[fol] = 1
+                else:
+                    fol_tot[fol] += 1
+                #conteo de folio con retraso 5 y 7
+                five = 0
+                seven = 0
+                if fol_tot[fol] > 5:
+                    cinco += 1
+                    five = 1
+                    #revisar folios asignados fuera de horario laboral con retraso en revisiones mayores a 5 días
+                    if fol.endswith('(1)'):#solo para la revision 1 se hará este analaisis ya que es donde se justifica el retraso en asignaciones fuera de la jornada laboral
+                        asignaciones_jefe = desem_jefes.loc[desem_jefes['equipo']==equipo_revisor[0]]
+                        asignaciones_jefe = list(asignaciones_jefe['cuest_asignados_fuerade_horario_lab(folio)'])[0] 
+                        if fol[:-4] in asignaciones_jefe:
+                            fol_asig_hlab.append(fol)
+                if fol_tot[fol] > 7:
+                    seven = 1
+                    siete1 += 1
+                matriz_resumen['Días_en_revisión'].append(fol_tot[fol])
+                matriz_resumen['Retraso+5'].append(1 if fol_tot[fol]==6 else 0)
+                matriz_resumen['Retraso+7'].append(1 if fol_tot[fol] == 8 else 0)#es importante dejarlo así con igual a ocho para no contar más elementos con retrasos mas 7, ya que está pensado para usarse en powerbi y eso genera una sobrestimación de casos
+                matriz_resumen['Retraso+5_histórico'].append(five)
+                matriz_resumen['Retraso+7_histórico'].append(seven)
+            lcinco.append(cinco)
+            lsiete1.append(siete1)
+        fol_asig_hlab = list(set(fol_asig_hlab))
+        retr_cuest_asig_fhlab.append(len(fol_asig_hlab)) 
+        retr_cuest_asig_fhlab_fol.append(fol_asig_hlab) 
+        #generarla imagen por usuario
+        num_rev1 = num_revi + [0]
+        num_rev1.pop(0)
+        generar_imagenes(index_f1[inicio_rev:-1],
+                         usuario,efectivos,
+                         num_rev1,lcinco,
+                         lsiete1)
+        foly_retr[usuario] = fol_tot
+        #apartado para calcular el numero de folios con retrasos 
+        cuest_retrasados = [] #lista con los cuestionarios retrasados
+        siete = []
+        for k in fol_tot:
+            if fol_tot[k] > 5:
+                cuest_retrasados.append(k)
+            if fol_tot[k] > 7:
+                siete.append(k)
+        n_retrasos_en_rev.append(len(cuest_retrasados))
+        n_retrasos_7.append(len(siete))
+        num_revisados.append(sum(num_revi)/len(num_revi))
+        max_rev_al_dia.append(max_rev_al)
+        #rellenar columna con ceros para matriz de interpretacion
+        relleno = [0 for i in range(inicio_rev)]
+        matriz_rev[usuario] = relleno+num_revi
+        matriz_rev[usuario].pop(0)#eliminar primer registro para acomodar todo a las fechas adecuadas en donde se hizo la revision
+        # print(usuario,num_revi,len(relleno+num_revi))
+
+desempe['maximo_carga_por_dia'] = maximo_carga_por_dia
+desempe['promedio_carga_trabajo_por_dia'] = promedio_carga_trabajo
+desempe['revisiones_con_mas_5_dias'] = n_retrasos_en_rev
+desempe['revisiones_con_mas_7_dias'] = n_retrasos_7
+desempe['promedio_revisiones_al_dia'] = num_revisados
+desempe['maximo_revisiones_al_dia'] = max_rev_al_dia
+desempe['retrasos_con_asignacion_fuera_hlab'] = retr_cuest_asig_fhlab
+desempe['retrasos_con_asignacion_fuera_hlab_fol'] = retr_cuest_asig_fhlab_fol
+
+frame_rev = pd.DataFrame(matriz_rev,index=index_f[:-1])
+
+#generar matriz de folios con atraso +5 y +7
+mas5 = {}
+mas7 = {}
+l5 = []
+l7 = []
+for usuario in foly_retr:
+    cinco = []
+    siete = []
+    for folio in foly_retr[usuario]:
+        if foly_retr[usuario][folio] > 5 and foly_retr[usuario][folio] <= 7:
+            cinco.append(folio)
+        if foly_retr[usuario][folio] > 7:
+            siete.append(folio)
+    mas5[usuario] = cinco
+    mas7[usuario] = siete
+    l5.append(len(cinco))
+    l7.append(len(siete))
+
+for usuario in mas5:
+    if len(mas5[usuario]) < max(l5):
+        ceros_sumar = max(l5) - len(mas5[usuario])
+        ss = [0 for i in range(ceros_sumar)]
+        mas5[usuario] += ss
+    if len(mas7[usuario]) < max(l7):
+        ceros_sumar = max(l7) - len(mas7[usuario])
+        ss = [0 for i in range(ceros_sumar)]
+        mas7[usuario] += ss
+
+#Esto solo irá en el desarrollo, debido a que corresponde al proceso de generar o actualizar el powerbi
+MR = pd.DataFrame(matriz_resumen)
+MR.to_csv('matriz_resumen.csv',index=False,encoding='latin-1')
+with pd.ExcelWriter('matriz_resumen_pow.xlsx') as writer:  
+    desempe.to_excel(writer, sheet_name='desempeño',index=False)
+    # MC.to_excel(writer, sheet_name='Dias_carga_cuestionarios')
+    # MDF.to_excel(writer, sheet_name='Dias_carga_cuestionarios_folio')
+    # frame_rev.to_excel(writer, sheet_name='revisiones_por_dia')
+    MR.to_excel(writer, sheet_name='matriz_resumen',index=False)
+    desem_jefes.to_excel(writer, sheet_name= 'desem_jefes',index=False)
+    avance.to_excel(writer, sheet_name='avance',index=False)
+    
+#crear salida para enviar mensajes
+d_salida = {}
+for usuario in MDF:
+    #conseguir los folios del usuario cargas de trabajo
+    historico_folios = list(MDF[usuario])
+    #solo seleccionar los folios de día previo de descarga de la base
+    interes =  historico_folios[-1]#el útlimo día es es de la fecha de descarga de la base
+    d_salida[usuario] = {}
+    for folio in interes:
+        if folio not in foly_retr[usuario]:#se trata de folios recien asignados
+            continue
+        # if foly_retr[usuario][folio] == 4:
+        #     inf_folio = df.loc[df['Folio']==folio[:-4]]
+        #     inf_folio = inf_folio.reset_index(drop=True)
+        #     censo = list(inf_folio['Proyecto'])[0]
+        #     modulo = list(inf_folio['Módulo'])[0]
+        #     entidad = list(inf_folio['Entidad'])[0]
+        #     texto = f'{censo} {entidad} {modulo}'
+        #     if 4 in d_salida[usuario]:
+        #         d_salida[usuario][4].append(texto)
+        #     else:
+        #         d_salida[usuario][4] = [texto]
+        if foly_retr[usuario][folio] == 5:
+            inf_folio = df.loc[df['Folio']==folio[:-4]]
+            inf_folio = inf_folio.reset_index(drop=True)
+            censo = list(inf_folio['Proyecto'])[0]
+            modulo = list(inf_folio['Módulo'])[0]
+            entidad = list(inf_folio['Entidad'])[0]
+            texto = f'{censo} {entidad} {modulo}'
+            if 5 in d_salida[usuario]:
+                d_salida[usuario][5].append(texto)
+            else:
+                d_salida[usuario][5] = [texto]
+        if foly_retr[usuario][folio] > 5 and foly_retr[usuario][folio] < 8:
+            inf_folio = df.loc[df['Folio']==folio[:-4]]
+            inf_folio = inf_folio.reset_index(drop=True)
+            censo = list(inf_folio['Proyecto'])[0]
+            modulo = list(inf_folio['Módulo'])[0]
+            entidad = list(inf_folio['Entidad'])[0]
+            texto = f'{censo} {entidad} {modulo}'
+            if 6 in d_salida[usuario]:
+                d_salida[usuario][6].append(texto)
+            else:
+                d_salida[usuario][6] = [texto]
+        if foly_retr[usuario][folio] > 7:
+            inf_folio = df.loc[df['Folio']==folio[:-4]]
+            inf_folio = inf_folio.reset_index(drop=True)
+            censo = list(inf_folio['Proyecto'])[0]
+            modulo = list(inf_folio['Módulo'])[0]
+            entidad = list(inf_folio['Entidad'])[0]
+            texto = f'{censo} {entidad} {modulo}'
+            if 7 in d_salida[usuario]:
+                d_salida[usuario][7].append(texto)
+            else:
+                d_salida[usuario][7] = [texto]
                 
+#va comentada para no enviarlos en automático!
+# mensajes(d_salida)
         

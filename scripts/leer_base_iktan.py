@@ -6,7 +6,7 @@ Created on Wed Jul 27 17:35:44 2022
 """
 
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 from gen_graf import generar_imagenes
 
@@ -73,6 +73,7 @@ def procesar(documento):
           'KARLA FABIOLA ACEVEDO BERNARDINO',
           # 'ANTONIO ROMERO LEYVA',
           'YOLISMA IVETTE LOPEZ CERON',
+          'URIEL EDUARDO CAMPUZANO HERNANDEZ',
           # 'DIANA LETICIA ALCALA GONZALEZ',
           'EDWIN HECTOR PINEDA LOPEZ']
         }
@@ -465,6 +466,8 @@ def procesar(documento):
     avan = []
     revi = []
     liber = []
+    NoAp = []
+
     for censo in censos:
         bb = df.loc[df['Proyecto']==censo]
         cantidad = len(list(bb['Folio'].unique()))
@@ -475,41 +478,54 @@ def procesar(documento):
         r = 0 #suma de recuperados con firma y sello--concluidos
         OCCC = 0 #suma de revisiones
         lib = 0 #suma de cuestionarios revisados
+        nop = 0 #no aplica
+        if censo == 'CNGE':
+            revisiss={'Entidad':[],'Modulo':[],'folio':[]}
         for filtro in filtros:
             bb1 = bb.loc[bb['Folio']==filtro]
             sta = list(bb1['Estatus'])
             suma = False
             suma1 = False
             suma2 = False
+            suma3 = False
             for es in sta:
+                if 'No aplica' in es:
+                    suma3 = True
                 if 'Revisión OC' in es:
                     suma1 = True
-                if 'En proceso de firma y sello' in es:
+                if 'En proceso de firma y sello (1)' in es:
                     suma2 = True
-                if 'Recuperado con firma y sello' in es:
+                if 'Recuperado con firma y sello (1)' in es:
                     suma = True
-                    break
-            if suma:
+                    
+            if suma and not suma3:
                 r += 1
             if suma1:
                 OCCC += 1
             if suma2:
                 lib += 1
+            if suma3:
+                if censo=='CNGE':
+                    revisiss['Entidad'].append(list(bb1['Entidad'])[0])
+                    revisiss['Modulo'].append(list(bb1['Módulo'])[0])
+                    revisiss['folio'].append(filtro)
+                nop += 1
         avan.append(r)
         revi.append(OCCC)
         liber.append(lib)
-        
+        NoAp.append(nop)
     avance = {'Equipo':[equipos[x] for x in list(cen_can.keys())],
            'Programa':list(cen_can.keys()),
            'Cuestionarios':list(cen_can.values()),
            'revisiones':revi,
            'cuestionarios_liberados':liber,
-           'Avance_cuestionarios_recuperados':avan,
-           'Porcentaje_de_conclusion':[]
+           'Avance_recuperados_conFyS':avan,
+           'Cuestionarios_NoAplica': NoAp,
+           'Porcentaje_de_conclusion(recup_firmaysello_y_NoAplica)':[]
            }
     c = 0
     for val in list(cen_can.values()):
-        avance['Porcentaje_de_conclusion'].append(f'{round(avan[c]*100/val)}%')
+        avance['Porcentaje_de_conclusion(recup_firmaysello_y_NoAplica)'].append(f'{round((avan[c]+NoAp[c])*100/val)}%')
         c += 1
     avance = pd.DataFrame(avance)
     
@@ -537,7 +553,10 @@ def procesar(documento):
             'equipo':[],
             'cuestionarios_asignados':[],
             'dias_prom_asig_cuestionario':[],
-            'dias_max_asig_cuestionario':[]
+            'dias_max_asig_cuestionario':[],
+            'dias_max_asig_cuestionario(folio)':[],
+            'cuest_asignados_fuerade_horario_lab': [],
+            'cuest_asignados_fuerade_horario_lab(folio)':[]
             }
         for usuario in plantilla: #itearar por cada usuario en el directorio de OC
             if usuario not in excluir: #sacar a los jefes   
@@ -603,6 +622,8 @@ def procesar(documento):
                 control_jefes['usuario'].append(usuario)
                 control_jefes['cuestionarios_asignados'].append(len(cuestionarios_asignados))
                 fechas = []
+                folio_fechas = []
+                asig_fuera_lab_fol = []
                 for cuestionario in cuestionarios_asignados:
                     folio = general.loc[general['Folio']==cuestionario]#solo con los folios de un cuestionario--es base pequeña
                     folio = folio.reset_index(drop=True)
@@ -612,10 +633,21 @@ def procesar(documento):
                         if usuario == proceso and revi[c] in revOC:#este filtro es para solo seleccionar al usuario cuando hizo un estatus de asignacion revision OC numero que sea
                             f_ini = folio['Registro'][c-1]
                             f_term = folio['Registro'][c]
+                            folio1_rev = revi[c-1]
+                            folio2_rev = revi[c]
+                            if folio1_rev in revOC and folio2_rev in revOC:
+                                #esta excepción deriva de una doble asignación de cuestionario. Esto no se debe tomar en cuenta [ver caso de Nayeli con Alexei]
+                                if usuario == list(folio['Usuario'])[c-1]:
+                                    continue
                             inicio = datetime.strptime(f_ini,"%d/%m/%Y %H:%M:%S")
                             term = datetime.strptime(f_term,"%d/%m/%Y %H:%M:%S")
                             h_dif = term.hour - inicio.hour
                             
+                            #conseguir numero y folios asignados fuera de horario laboral o de días laborales
+                            comprobar = np.is_busday([term.date()],holidays=feriados)
+                            comprobar = comprobar.tolist()
+                            if term.hour > 17 or not comprobar[0]:
+                                asig_fuera_lab_fol.append(cuestionario)
                             # resta = np.busday_count(inicio.date(),
                             #                        term.date(),
                             #                        holidays=feriados)
@@ -631,12 +663,21 @@ def procesar(documento):
                                                    holidays=feriados)
                                 horasdia = (h_dif * 10 / 24) * 0.1
                             fechas.append(round(dife + horasdia,1)) 
+                            folio_fechas.append(cuestionario)
                         c += 1
                 # print(usuario,fechas)
                 promedio_asig = sum(fechas) / len(fechas) if len(fechas)>0 else 0
                 control_jefes['dias_prom_asig_cuestionario'].append(round(promedio_asig,2))
                 control_jefes['dias_max_asig_cuestionario'].append(max(fechas) if len(fechas)>0 else 'No hay datos suficientes')
-                    
+                control_jefes['cuest_asignados_fuerade_horario_lab'].append(len(asig_fuera_lab_fol))
+                control_jefes['cuest_asignados_fuerade_horario_lab(folio)'].append(asig_fuera_lab_fol)
+                folio_fech = 'NA'
+                for i,f in enumerate(fechas):
+                    if f == max(fechas):
+                        folio_fech = folio_fechas[i]   
+                        break
+                control_jefes['dias_max_asig_cuestionario(folio)'].append(folio_fech)
+                
         desempe = pd.DataFrame(control)
         desem_jefes = pd.DataFrame(control_jefes)
     except:
@@ -695,16 +736,17 @@ def procesar(documento):
                 num_rev  = estatus[-3:]
                 # print(estatus,frame.loc[fila,'Usuario'])
                 if '(1)' in estatus and frame.loc[fila,'Usuario'] in excluir:
-                    fecha_inicial_rev = pd.to_datetime(frame.loc[fila,'Registro'],format="%d/%m/%Y %H:%M:%S")
+                    fecha_inicial_rev = pd.to_datetime(frame.loc[fila,'Registro'].split(' ')[0],format="%d/%m/%Y")
                 if '(1)' not in estatus:
-                    fecha_inicial_rev = pd.to_datetime(frame.loc[fila,'Registro'],format="%d/%m/%Y %H:%M:%S")
+                    fecha_inicial_rev = pd.to_datetime(frame.loc[fila,'Registro'].split(' ')[0],format="%d/%m/%Y")
                 if '(1)' in estatus and frame.loc[fila,'Usuario'] not in excluir:
                     fila += 1
                     continue
                 try:#porque quizá el indcie excede el len del frame y podría ser error.
-                    fecha_fin_rev = pd.to_datetime(frame.loc[fila+1,'Registro'],format="%d/%m/%Y %H:%M:%S")
+                    fecha_fin_rev = pd.to_datetime(frame.loc[fila+1,'Registro'].split(' ')[0],format="%d/%m/%Y")
                 except:
-                    fecha_fin_rev = hoy.date()
+                    tomorrow =  hoy + timedelta(days=1)
+                    fecha_fin_rev = tomorrow.date()
                 lista_dias = list(pd.date_range(start=fecha_inicial_rev,
                                             end=fecha_fin_rev
                                             ))
@@ -731,7 +773,23 @@ def procesar(documento):
     num_revisados = []
     max_rev_al_dia = []
     matriz_rev = {}
-
+    retr_cuest_asig_fhlab = []
+    retr_cuest_asig_fhlab_fol = []
+    #matriz resumen solo es para el desarrollo!!! power bi
+    matriz_resumen = {'Fecha':[],
+                      'Folio':[],
+                      'Censo':[],
+                      'Módulo':[],
+                      'Región':[],
+                      'Entidad':[],
+                      'Equipo':[],
+                      'Revisor':[],
+                      'Días_en_revisión':[],
+                      'Retraso+5':[],
+                      'Retraso+7':[],
+                      'Retraso+5_histórico':[],
+                      'Retraso+7_histórico':[]}
+    foly_retr = {}
     for usuario in desempe['usuario']:
         valores = list(MC[usuario])
         if sum(valores) == 0:
@@ -741,7 +799,11 @@ def procesar(documento):
             n_retrasos_7.append('NA')
             num_revisados.append('NA')
             max_rev_al_dia.append('NA')
+            retr_cuest_asig_fhlab.append(0)
+            retr_cuest_asig_fhlab_fol.append('NA')
         else:
+            f1 = desempe.loc[desempe['usuario']==usuario]
+            equipo_revisor = list(f1['equipo']) 
             inicio_rev = 0
             for valor in valores:
                 if valor != 0:#detectar el primer cero para sacar su indice y trabajar sobre ese
@@ -756,10 +818,11 @@ def procesar(documento):
             fol_tot = {}
             num_revi = [0]
             max_rev_al = 0
-            atraso = 0
+            # atraso = 0
             #apartado para contar numero de revisiones hechas en el día
             lcinco = []
             lsiete1 = [] 
+            fol_asig_hlab =  []
             for n, lista in enumerate(folio_efectivo):
                 cinco = 0
                 siete1 = 0 
@@ -773,22 +836,54 @@ def procesar(documento):
                     max_rev_al = max([max_rev_al,rev])
                 #contar el numero de veces quue aparece el folio en los días de revision
                 for fol in lista:
+                    inf_folio = df.loc[df['Folio']==fol[:-4]]
+                    inf_folio = inf_folio.reset_index(drop=True)
+                    matriz_resumen['Censo'].append(list(inf_folio['Proyecto'])[0])
+                    matriz_resumen['Módulo'].append(list(inf_folio['Módulo'])[0])
+                    matriz_resumen['Región'].append(list(inf_folio['Región'])[0])
+                    matriz_resumen['Entidad'].append(list(inf_folio['Entidad'])[0])
+                    matriz_resumen['Fecha'].append(index_f1[inicio_rev:-1][n])
+                    matriz_resumen['Folio'].append(fol)
+                    matriz_resumen['Equipo'].append(equipo_revisor[0])
+                    matriz_resumen['Revisor'].append(usuario)
                     if fol not in fol_tot:
                         fol_tot[fol] = 1
                     else:
                         fol_tot[fol] += 1
                     #conteo de folio con retraso 5 y 7
+                    five = 0
+                    seven = 0
                     if fol_tot[fol] > 5:
                         cinco += 1
+                        five = 1
+                        #revisar folios asignados fuera de horario laboral con retraso en revisiones mayores a 5 días
+                        if fol.endswith('(1)'):#solo para la revision 1 se hará este analaisis ya que es donde se justifica el retraso en asignaciones fuera de la jornada laboral
+                            asignaciones_jefe = desem_jefes.loc[desem_jefes['equipo']==equipo_revisor[0]]
+                            asignaciones_jefe = list(asignaciones_jefe['cuest_asignados_fuerade_horario_lab(folio)'])[0] 
+                            if fol[:-4] in asignaciones_jefe:
+                                fol_asig_hlab.append(fol)
                     if fol_tot[fol] > 7:
+                        seven = 1
                         siete1 += 1
+                    matriz_resumen['Días_en_revisión'].append(fol_tot[fol])
+                    matriz_resumen['Retraso+5'].append(1 if fol_tot[fol]==6 else 0)
+                    matriz_resumen['Retraso+7'].append(1 if fol_tot[fol] > 7 else 0)
+                    matriz_resumen['Retraso+5_histórico'].append(five)
+                    matriz_resumen['Retraso+7_histórico'].append(seven)
                 lcinco.append(cinco)
                 lsiete1.append(siete1)
+            
+            fol_asig_hlab = list(set(fol_asig_hlab))
+            retr_cuest_asig_fhlab.append(len(fol_asig_hlab)) 
+            retr_cuest_asig_fhlab_fol.append(fol_asig_hlab) 
             #generarla imagen por usuario
+            num_rev1 = num_revi + [0]
+            num_rev1.pop(0)
             generar_imagenes(index_f1[inicio_rev:-1],
                              usuario,efectivos,
-                             num_revi,lcinco,
+                             num_rev1,lcinco,
                              lsiete1)
+            foly_retr[usuario] = fol_tot
             #apartado para calcular el numero de folios con retrasos 
             cuest_retrasados = [] #lista con los cuestionarios retrasados
             siete = []
@@ -804,7 +899,7 @@ def procesar(documento):
             #rellenar columna con ceros para matriz de interpretacion
             relleno = [0 for i in range(inicio_rev)]
             matriz_rev[usuario] = relleno+num_revi
-
+            matriz_rev[usuario].pop(0)#eliminar primer registro para acomodar todo a las fechas adecuadas en donde se hizo la revision
             # print(usuario,num_revi,len(relleno+num_revi))
 
     desempe['maximo_carga_por_dia'] = maximo_carga_por_dia
@@ -813,20 +908,52 @@ def procesar(documento):
     desempe['revisiones_con_mas_7_dias'] = n_retrasos_7
     desempe['promedio_revisiones_al_dia'] = num_revisados
     desempe['maximo_revisiones_al_dia'] = max_rev_al_dia
+    desempe['retrasos_con_asignacion_fuera_hlab'] = retr_cuest_asig_fhlab
+    desempe['retrasos_con_asignacion_fuera_hlab_fol'] = retr_cuest_asig_fhlab_fol
 
-    frame_rev = pd.DataFrame(matriz_rev,index=index_f)
-    with pd.ExcelWriter('prueba_carga_trabajo.xlsx') as writer:  
-        desempe.to_excel(writer, sheet_name='desempeño',index=False)
-        MC.to_excel(writer, sheet_name='Dias_carga_cuestionarios')
-        MDF.to_excel(writer, sheet_name='Dias_carga_cuestionarios_folio')
-        frame_rev.to_excel(writer, sheet_name='revisiones_por_dia')
+    frame_rev = pd.DataFrame(matriz_rev,index=index_f[:-1])
+    #generar matriz de folios con atraso +5 y +7
+    mas5 = {}
+    mas7 = {}
+    l5 = []
+    l7 = []
+    for usuario in foly_retr:
+        cinco = []
+        siete = []
+        for folio in foly_retr[usuario]:
+            if foly_retr[usuario][folio] > 5 and foly_retr[usuario][folio] <= 7:
+                cinco.append(folio)
+            if foly_retr[usuario][folio] > 7:
+                siete.append(folio)
+        mas5[usuario] = cinco
+        mas7[usuario] = siete
+        l5.append(len(cinco))
+        l7.append(len(siete))
+
+    for usuario in mas5:
+        if len(mas5[usuario]) < max(l5):
+            ceros_sumar = max(l5) - len(mas5[usuario])
+            ss = [0 for i in range(ceros_sumar)]
+            mas5[usuario] += ss
+        if len(mas7[usuario]) < max(l7):
+            ceros_sumar = max(l7) - len(mas7[usuario])
+            ss = [0 for i in range(ceros_sumar)]
+            mas7[usuario] += ss
+    mas5 = pd.DataFrame(mas5)
+    mas7 = pd.DataFrame(mas7)
+    #No hace falta guardar, esto solo es para pruebas
+    # with pd.ExcelWriter('prueba_carga_trabajo.xlsx') as writer:  
+    #     desempe.to_excel(writer, sheet_name='desempeño',index=False)
+    #     MC.to_excel(writer, sheet_name='Dias_carga_cuestionarios')
+    #     MDF.to_excel(writer, sheet_name='Dias_carga_cuestionarios_folio')
+    #     frame_rev.to_excel(writer, sheet_name='revisiones_por_dia')
         
-    return rt, ntest, historial, fecha, avance, desempe, desem_jefes, MC, MDF, frame_rev
+    return rt, ntest, historial, fecha, avance, desempe, desem_jefes, MC, MDF, frame_rev, mas5, mas7 
 
     
     
 
-def save(rt,ntest,historial,avance,desempe,jefes,MC,MDF,frame_rev,f_cortes):
+def save(rt,ntest,historial,avance,desempe,jefes,MC,MDF,frame_rev,mas5,mas7,f_cortes):
     #quitar los caracteres de la string de feha para guardar el archivo con ese nombre
     fecha = f_cortes.replace('/','-')
     fecha = fecha.replace(' ','-')
@@ -838,10 +965,13 @@ def save(rt,ntest,historial,avance,desempe,jefes,MC,MDF,frame_rev,f_cortes):
         historial.to_excel(writer, sheet_name='historial',index=False)
         avance.to_excel(writer, sheet_name='avance',index=False)
         desempe.to_excel(writer, sheet_name='desempe',index=False)
+        mas5.to_excel(writer, sheet_name='retrasos_mas_5_dias',index=False)
+        mas7.to_excel(writer, sheet_name='retrasos_mas_7_dias',index=False)
         MC.to_excel(writer, sheet_name='Dias_carga_cuestionarios')
         MDF.to_excel(writer, sheet_name='Dias_carga_cuestionarios_folio')
         frame_rev.to_excel(writer, sheet_name='revisiones_por_dia')
         jefes.to_excel(writer, sheet_name='desempe_jefes',index=False)
+        
     
     return
     

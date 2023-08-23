@@ -11,6 +11,7 @@ from datetime import datetime
 from tkinter import filedialog, ttk, messagebox, StringVar
 from hacer_presentacion import gen_presentacion,borrar_imagenes
 
+
 class aplicacion(tk.Frame):
     
     def __init__(self,master=None):
@@ -72,7 +73,7 @@ class aplicacion(tk.Frame):
     def ruta(self):
         try:
             archivo = filedialog.askopenfile(mode='r')
-            self.ROCE,self.OA,self.historial,self.fecha_d,self.avance,self.desemp,self.jefes,self.MC,self.MDF,self.frame_rev = procesar(archivo.name)
+            self.ROCE,self.OA,self.historial,self.fecha_d,self.avance,self.desemp,self.jefes,self.MC,self.MDF,self.frame_rev,self.mas5,self.mas7 = procesar(archivo.name)
             ##aqui pantalla de usuarios, el save se hará solo si es OC
             # save(self.ROCE,self.OA,self.historial,self.avance)
             if type(self.ROCE) != list:
@@ -161,14 +162,14 @@ class aplicacion(tk.Frame):
         contra = self.contras.get()
         if contra == 'contraseñaOC':
             self.edd = 'Todos'
-            save(self.ROCE,self.OA,self.historial,self.avance,self.desemp,self.jefes,self.MC,self.MDF,self.frame_rev,self.fecha_d)
+            save(self.ROCE,self.OA,self.historial,self.avance,self.desemp,self.jefes,self.MC,self.MDF,self.frame_rev,self.mas5,self.mas7,self.fecha_d)
             br = self.pack_slaves()#limpiar interfaz
             for val in br:
                 val.destroy()
             rev = list(self.OA['Estatus'])
             #hacer presentación
             try:
-                gen_presentacion()
+                gen_presentacion(self.fecha_d)
             except:
                 messagebox.showinfo(
                     message = 'Debido a que primero inició sesión como usuario regional, se han borrado las imagenes generadas para construir la presentación de desempeño. Si desea obtenerla, es necesario volver a cargar un cuestionario para su lectura y a continuación, ingresar con usuario OC',
@@ -385,16 +386,16 @@ class aplicacion(tk.Frame):
         b3.pack(pady=5)  
         
         #sino es OC el usuario no tiene caso mostrar esto
-        if self.el_usuario == 'OC':
-            filtro2 = self.avance.loc[self.avance['Equipo']==equipos[pro]]
-            filtro2 = filtro2.loc[:,['Programa','Porcentaje_de_conclusion']]
-            tk.Label(self.frame1, 
-                     text='Avance de revisión del equipo: ',
-                     bg='#def3f6').pack()
-            AV = tk.Label(self.frame1, text=filtro2.to_string(),
-                          bg='#def3f6')
-            AV.config(font=("Courier", 10))
-            AV.pack()
+        # if self.el_usuario == 'OC':
+        #     filtro2 = self.avance.loc[self.avance['Equipo']==equipos[pro]]
+        #     filtro2 = filtro2.loc[:,['Programa','Porcentaje_de_conclusion']]
+        #     tk.Label(self.frame1, 
+        #              text='Avance de revisión del equipo: ',
+        #              bg='#def3f6').pack()
+        #     AV = tk.Label(self.frame1, text=filtro2.to_string(),
+        #                   bg='#def3f6')
+        #     AV.config(font=("Courier", 10))
+        #     AV.pack()
         tk.Label(self.frame1,text='Fecha de consulta:'+ self.hoy.strftime("%d/%m/%Y"),
                  bg='#def3f6').pack()
     
@@ -512,22 +513,22 @@ class aplicacion(tk.Frame):
             arbol.insert('', tk.END, values=(list(filtro1.iloc[imm,:])))
         arbol.pack()
         #aquí condicional par que sino son de OC no se despliegue la informacion de desempeño
-        if self.el_usuario == 'OC':
-            excluir = ['LILIANA AVILA LOPEZ','NALLELY BECERRIL DAVILA',
-                       'ALEXEI PRADEL HERNANDEZ']
-            #comienza filtro para desplegar desempeño de responsable revisor o jefe
-            if perso not in excluir:
-                filtro2 = self.desemp[self.desemp['usuario']==perso].squeeze()
-                # filtro2 = self.desemp.loc[self.desemp['usuario']==perso]
-                tk.Label(self.frame1, text='Desempeño en revisiones',
-                         bg='#def3f6').pack()
-            if perso in excluir:
-                filtro2 = self.jefes[self.jefes['usuario']==perso].squeeze()
-                # filtro2 = self.jefes.loc[self.jefes['usuario']==perso]
-                tk.Label(self.frame1, text='Desempeño en designaciones',
-                         bg='#def3f6').pack()
-            tk.Label(self.frame1, text=filtro2.to_string(),
-                     bg='#def3f6').pack()
+        # if self.el_usuario == 'OC':
+        #     excluir = ['LILIANA AVILA LOPEZ','NALLELY BECERRIL DAVILA',
+        #                'ALEXEI PRADEL HERNANDEZ']
+        #     #comienza filtro para desplegar desempeño de responsable revisor o jefe
+        #     if perso not in excluir:
+        #         filtro2 = self.desemp[self.desemp['usuario']==perso].squeeze()
+        #         # filtro2 = self.desemp.loc[self.desemp['usuario']==perso]
+        #         tk.Label(self.frame1, text='Desempeño en revisiones',
+        #                  bg='#def3f6').pack()
+        #     if perso in excluir:
+        #         filtro2 = self.jefes[self.jefes['usuario']==perso].squeeze()
+        #         # filtro2 = self.jefes.loc[self.jefes['usuario']==perso]
+        #         tk.Label(self.frame1, text='Desempeño en designaciones',
+        #                  bg='#def3f6').pack()
+        #     tk.Label(self.frame1, text=filtro2.to_string(),
+        #              bg='#def3f6').pack()
         #boton para regresar
         brt1 = tk.Button(self.frame1, text ="Regresar", command = self.consul1)
         brt1.pack()
