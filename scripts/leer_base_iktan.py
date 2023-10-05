@@ -99,6 +99,8 @@ def procesar(documento):
         'CNSPE':'Integración de Información',
         'CNPJE':'Integración de Información',
         'CNIJE':'Control y Logística',
+        'CNPLE': 'Operación Estratégica',
+        'CNTAIPPDPE': 'Operación Estratégica',
         'CNDHE':'Operación Estratégica',
         'vacio':'Sin equipo asignado'
         }
@@ -559,18 +561,20 @@ def procesar(documento):
             'cuest_asignados_fuerade_horario_lab(folio)':[]
             }
         for usuario in plantilla: #itearar por cada usuario en el directorio de OC
-            if usuario not in excluir: #sacar a los jefes   
-                folios = general_r.loc[general_r['Usuario']==usuario]#cuestionarios del usuario
-                cuestionarios_revisados = list(folios['Folio'].unique())
-                #conseguir el equipo del usuario
-                for equpo in equipos_nom:
-                    if usuario in equipos_nom[equpo]:
-                        control['equipo'].append(equpo)
-                # print(usuario,len(cuestionarios_revisados))
-                control['usuario'].append(usuario)
-                control['cuestionarios_revisados'].append(len(cuestionarios_revisados))
-                n_revisiones = [] #numero de revisiones por cuestionario
-                fechas = []#lista con tuplas de fecha inicio revision OC y fecha de siguiente estatus que es cuando terminaron de revisar
+            # if usuario not in excluir: #sacar a los jefes   
+            folios = general_r.loc[general_r['Usuario']==usuario]#cuestionarios del usuario
+            cuestionarios_revisados = list(folios['Folio'].unique())
+            #conseguir el equipo del usuario
+            for equpo in equipos_nom:
+                if usuario in equipos_nom[equpo]:
+                    control['equipo'].append(equpo)
+            # print(usuario,len(cuestionarios_revisados))
+            control['usuario'].append(usuario)
+            revisados = len(cuestionarios_revisados) if df.isin([f'Folio asignado a usuario para su revisón a: {usuario}']).any().any() else 0
+            control['cuestionarios_revisados'].append(revisados)
+            n_revisiones = [] #numero de revisiones por cuestionario
+            fechas = []#lista con tuplas de fecha inicio revision OC y fecha de siguiente estatus que es cuando terminaron de revisar
+            if revisados:
                 for cuestionario in cuestionarios_revisados:
                     folio = general.loc[general['Folio']==cuestionario]#solo con los folios de un cuestionario--es base pequeña
                     folio = folio.reset_index(drop=True)
@@ -605,11 +609,11 @@ def procesar(documento):
                     if ultimoOC:
                         n_revisiones.append(ultimoOC)
                 # print(len(fechas),len(n_revisiones),sum(n_revisiones)) #los len no son iguales porque hay más revisiones y el numero de aquí solo representa la cantidad de ellas, mientras que las fechas es una tupla por revision
-                promedio_rev=sum(fechas) / len(fechas) if len(fechas)>0 else 0
-                prom_por_cues = sum(n_revisiones) / len(n_revisiones) if len(n_revisiones)>0 else 0
-                control['promedio_dias_revision'].append(round(promedio_rev,2))
-                control['prom_revisiones_por_cuestionario'].append(round(prom_por_cues,2))
-                control['Max_dias_en_rev'].append(max(fechas) if fechas else 'NA')
+            promedio_rev=sum(fechas) / len(fechas) if len(fechas)>0 else 0
+            prom_por_cues = sum(n_revisiones) / len(n_revisiones) if len(n_revisiones)>0 else 0
+            control['promedio_dias_revision'].append(round(promedio_rev,2))
+            control['prom_revisiones_por_cuestionario'].append(round(prom_por_cues,2))
+            control['Max_dias_en_rev'].append(max(fechas) if fechas else 'NA')
             #ahora conseguir métricas para los jefes
             if usuario in excluir:
                 folios = gen_jef.loc[gen_jef['Usuario']==usuario]#cuestionarios donde participa el jefe
@@ -809,12 +813,12 @@ def procesar(documento):
                 if valor != 0:#detectar el primer cero para sacar su indice y trabajar sobre ese
                     break
                 inicio_rev += 1
-            efectivos = valores[inicio_rev:-1]#menos uno porque no interesa el dato final ya que ese no es preciso por ser fecha de corte de la descarga de la base de datos
+            efectivos = valores[inicio_rev:]#borrar menos uno porque ya se toman en cuenta todos los datos
             maximo_carga_por_dia.append(max(efectivos))
             promedio_carga_trabajo.append(sum(efectivos)/len(efectivos))
             #conteo de cuestionarios con retraso
             folio_r = list(MDF[usuario])
-            folio_efectivo = folio_r[inicio_rev:-1]
+            folio_efectivo = folio_r[inicio_rev:]
             fol_tot = {}
             num_revi = [0]
             max_rev_al = 0
@@ -842,7 +846,7 @@ def procesar(documento):
                     matriz_resumen['Módulo'].append(list(inf_folio['Módulo'])[0])
                     matriz_resumen['Región'].append(list(inf_folio['Región'])[0])
                     matriz_resumen['Entidad'].append(list(inf_folio['Entidad'])[0])
-                    matriz_resumen['Fecha'].append(index_f1[inicio_rev:-1][n])
+                    matriz_resumen['Fecha'].append(index_f1[inicio_rev:][n])
                     matriz_resumen['Folio'].append(fol)
                     matriz_resumen['Equipo'].append(equipo_revisor[0])
                     matriz_resumen['Revisor'].append(usuario)
@@ -879,7 +883,7 @@ def procesar(documento):
             #generarla imagen por usuario
             num_rev1 = num_revi + [0]
             num_rev1.pop(0)
-            generar_imagenes(index_f1[inicio_rev:-1],
+            generar_imagenes(index_f1[inicio_rev:],
                              usuario,efectivos,
                              num_rev1,lcinco,
                              lsiete1)
@@ -911,7 +915,7 @@ def procesar(documento):
     desempe['retrasos_con_asignacion_fuera_hlab'] = retr_cuest_asig_fhlab
     desempe['retrasos_con_asignacion_fuera_hlab_fol'] = retr_cuest_asig_fhlab_fol
 
-    frame_rev = pd.DataFrame(matriz_rev,index=index_f[:-1])
+    frame_rev = pd.DataFrame(matriz_rev,index=index_f[:])
     #generar matriz de folios con atraso +5 y +7
     mas5 = {}
     mas7 = {}

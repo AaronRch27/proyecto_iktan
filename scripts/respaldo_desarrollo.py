@@ -16,7 +16,7 @@ hoy =  datetime.now()
 
 #leer archivo descargado de iktan
 
-documento = pd.read_excel('xIktan_20230822100448548_reporteSegumiento.xlsx')
+documento = pd.read_excel('xIktan_20231003030410237_reporteSegumiento.xlsx')
 
 #formar nuevo dataframe
 rep = documento.fillna('vacio') #llenar espacios vacios con la palabra 'vacio'
@@ -57,10 +57,10 @@ region = {'centro':[9],
 #identificacion pr nombres estará descativada ya que con el proyecto se puede dar con el equipo que lo trabaja, sin emabrgo, esta variabl puede ser útil más adelante para identificar cargas de trabajo por persona
 equipos_nom = { 
     'Operación Estratégica': ['LILIANA AVILA LOPEZ',
-      'VERONICA ITZEL JIMENEZ GONZALEZ',#no estan en base de datos
+      # 'VERONICA ITZEL JIMENEZ GONZALEZ',#no estan en base de datos
       'MARIANA RIOS MARTINEZ',
-      'VICTOR AYAX QUINTERO ORTEGA',
-      'DANIEL LOPEZ SANCHEZ'],#no estan en base de datos
+      'VICTOR AYAX QUINTERO ORTEGA'],#solo Mariana y Víctor revisan en equipo de Lili
+      # 'DANIEL LOPEZ SANCHEZ'],#no estan en base de datos
     'Integración de Información': ['NALLELY BECERRIL DAVILA',
       'ROGELIO ROSALES MORALES',
       'JOSE MANUEL OCOMATL OLAYA',
@@ -109,6 +109,8 @@ equipos = {
     'CNPJE':'Integración de Información',
     'CNIJE':'Control y Logística',
     'CNDHE':'Operación Estratégica',
+    'CNPLE': 'Operación Estratégica',
+    'CNTAIPPDPE': 'Operación Estratégica',
     'vacio':'Sin equipo asignado'
     }
 
@@ -577,18 +579,20 @@ control_jefes = {
     'cuest_asignados_fuerade_horario_lab(folio)':[]
     }
 for usuario in plantilla: #itearar por cada usuario en el directorio de OC
-    if usuario not in excluir: #sacar a los jefes   
-        folios = general_r.loc[general_r['Usuario']==usuario]#cuestionarios del usuario
-        cuestionarios_revisados = list(folios['Folio'].unique())
-        #conseguir el equipo del usuario
-        for equpo in equipos_nom:
-            if usuario in equipos_nom[equpo]:
-                control['equipo'].append(equpo)
-        # print(usuario,len(cuestionarios_revisados))
-        control['usuario'].append(usuario)
-        control['cuestionarios_revisados'].append(len(cuestionarios_revisados))
-        n_revisiones = [] #numero de revisiones por cuestionario
-        fechas = []#lista con tuplas de fecha inicio revision OC y fecha de siguiente estatus que es cuando terminaron de revisar
+    # if usuario not in excluir: #sacar a los jefes   
+    folios = general_r.loc[general_r['Usuario']==usuario]#cuestionarios del usuario
+    cuestionarios_revisados = list(folios['Folio'].unique())
+    #conseguir el equipo del usuario
+    for equpo in equipos_nom:
+        if usuario in equipos_nom[equpo]:
+            control['equipo'].append(equpo)
+    # print(usuario,len(cuestionarios_revisados))
+    control['usuario'].append(usuario)
+    revisados = len(cuestionarios_revisados) if df.isin([f'Folio asignado a usuario para su revisón a: {usuario}']).any().any() else 0
+    control['cuestionarios_revisados'].append(revisados)
+    n_revisiones = [] #numero de revisiones por cuestionario
+    fechas = []#lista con tuplas de fecha inicio revision OC y fecha de siguiente estatus que es cuando terminaron de revisar
+    if revisados:  #nuevo filtro e comprobación para calcular datos solo si hizo revisiones--- ver caso de nayeli, no hizo revisiones entonces no tiene sentido calcular 
         for cuestionario in cuestionarios_revisados:
             folio = general.loc[general['Folio']==cuestionario]#solo con los folios de un cuestionario--es base pequeña
             folio = folio.reset_index(drop=True)
@@ -630,11 +634,11 @@ for usuario in plantilla: #itearar por cada usuario en el directorio de OC
                 #         num += letra
                 # revision = int(num) #sacar numero de la string y convertirlo a formato numero
                 n_revisiones.append(ultimoOC)
-        # print(usuario,len(fechas),fechas,len(n_revisiones),sum(n_revisiones)) #los len no son iguales porque hay más revisiones y el numero de aquí solo representa la cantidad de ellas, mientras que las fechas es una tupla por revision
-        control['promedio_dias_revision'].append(sum(fechas) / len(fechas) if len(fechas)>0 else 0)
-        control['prom_revisiones_por_cuestionario'].append(sum(n_revisiones) / len(n_revisiones) if len(n_revisiones)>0 else 0)
-        control['Max_dias_en_rev'].append(max(fechas) if fechas else 0)
-        
+    # print(usuario,len(fechas),fechas,len(n_revisiones),sum(n_revisiones)) #los len no son iguales porque hay más revisiones y el numero de aquí solo representa la cantidad de ellas, mientras que las fechas es una tupla por revision
+    control['promedio_dias_revision'].append(sum(fechas) / len(fechas) if len(fechas)>0 else 0)
+    control['prom_revisiones_por_cuestionario'].append(sum(n_revisiones) / len(n_revisiones) if len(n_revisiones)>0 else 0)
+    control['Max_dias_en_rev'].append(max(fechas) if fechas else 0)
+    
             
     #ahora conseguir métricas para los jefes
     if usuario in excluir:
@@ -808,6 +812,7 @@ max_rev_al_dia = []
 matriz_rev = {}
 retr_cuest_asig_fhlab = []
 retr_cuest_asig_fhlab_fol = []
+total_revisiones = [] #esto solo es para desarrollo. No está contemplado en los indicadores de acro, solo en powerbi
 #matriz resumen solo es para el desarrollo!!! power bi
 matriz_resumen = {'Fecha':[],
                   'Folio':[],
@@ -822,10 +827,20 @@ matriz_resumen = {'Fecha':[],
                   'Retraso+7':[],
                   'Retraso+5_histórico':[],
                   'Retraso+7_histórico':[]}
+#Esta matriz es también solo de entorno de desarrollo y es para generar el modelo de regresion lineal
+regresion = {'revisor':[],
+             'censo':[],
+             'modulo':[],
+             'entidad':[],
+             # 'promedio_carga_trabajo':[],
+             'num_de_revision':[],
+             'dias_en_revision':[]
+    }
 foly_retr = {}
 for usuario in desempe['usuario']:
     valores = list(MC[usuario])
     if sum(valores) == 0:
+        #anteriormente se asignaba un NA a los valores sin registro, pero por comodidad en la presentacion de datos para tablero power bi se cambió a ceros. Esto solo ocurre en apartado para desarrollo, porque en acro sigue estando igual, con los NA
         maximo_carga_por_dia.append(0)
         promedio_carga_trabajo.append(0)
         n_retrasos_en_rev.append(0)
@@ -834,6 +849,7 @@ for usuario in desempe['usuario']:
         max_rev_al_dia.append(0)
         retr_cuest_asig_fhlab.append(0)
         retr_cuest_asig_fhlab_fol.append(0)
+        total_revisiones.append(0)
     else:
         f1 = desempe.loc[desempe['usuario']==usuario]
         equipo_revisor = list(f1['equipo']) 
@@ -842,17 +858,17 @@ for usuario in desempe['usuario']:
             if valor != 0:#detectar el primer cero para sacar su indice y trabajar sobre ese
                 break
             inicio_rev += 1
-        efectivos = valores[inicio_rev:-1]#menos uno porque no interesa el dato final ya que ese no es preciso por ser fecha de corte de la descarga de la base de datos
+        efectivos = valores[inicio_rev:]#menos uno porque no interesa el dato final ya que ese no es preciso por ser fecha de corte de la descarga de la base de datos
         maximo_carga_por_dia.append(max(efectivos))
         promedio_carga_trabajo.append(sum(efectivos)/len(efectivos))
         #conteo de cuestionarios con retraso
         folio_r = list(MDF[usuario])
-        folio_efectivo = folio_r[inicio_rev:-1]
+        folio_efectivo = folio_r[inicio_rev:]
         fol_tot = {}
         num_revi = [0]
         max_rev_al = 0
         atraso = 0
-        fol_asig_hlab =  []
+        fol_asig_hlab = []
         #apartado para contar numero de revisiones hechas en el día
         lcinco = []
         lsiete1 = [] 
@@ -875,14 +891,23 @@ for usuario in desempe['usuario']:
                 matriz_resumen['Módulo'].append(list(inf_folio['Módulo'])[0])
                 matriz_resumen['Región'].append(list(inf_folio['Región'])[0])
                 matriz_resumen['Entidad'].append(list(inf_folio['Entidad'])[0])
-                matriz_resumen['Fecha'].append(index_f1[inicio_rev:-1][n])
+                matriz_resumen['Fecha'].append(index_f1[inicio_rev:][n])
                 matriz_resumen['Folio'].append(fol)
                 matriz_resumen['Equipo'].append(equipo_revisor[0])
                 matriz_resumen['Revisor'].append(usuario)
+                
+                regresion['revisor'].append(usuario)
+                regresion['censo'].append(inf_folio['Proyecto'][0])
+                regresion['modulo'].append(inf_folio['Módulo'][0])
+                regresion['entidad'].append(inf_folio['Entidad'][0])
+                regresion['num_de_revision'].append(int(fol[-2:-1]))
+                
                 if fol not in fol_tot:
                     fol_tot[fol] = 1
                 else:
                     fol_tot[fol] += 1
+                    
+                regresion['dias_en_revision'].append(fol_tot[fol])
                 #conteo de folio con retraso 5 y 7
                 five = 0
                 seven = 0
@@ -911,11 +936,12 @@ for usuario in desempe['usuario']:
         #generarla imagen por usuario
         num_rev1 = num_revi + [0]
         num_rev1.pop(0)
-        generar_imagenes(index_f1[inicio_rev:-1],
+        generar_imagenes(index_f1[inicio_rev:],
                          usuario,efectivos,
                          num_rev1,lcinco,
                          lsiete1)
         foly_retr[usuario] = fol_tot
+        total_revisiones.append(len(fol_tot))
         #apartado para calcular el numero de folios con retrasos 
         cuest_retrasados = [] #lista con los cuestionarios retrasados
         siete = []
@@ -942,8 +968,9 @@ desempe['promedio_revisiones_al_dia'] = num_revisados
 desempe['maximo_revisiones_al_dia'] = max_rev_al_dia
 desempe['retrasos_con_asignacion_fuera_hlab'] = retr_cuest_asig_fhlab
 desempe['retrasos_con_asignacion_fuera_hlab_fol'] = retr_cuest_asig_fhlab_fol
+desempe['Total_revisiones'] = total_revisiones
 
-frame_rev = pd.DataFrame(matriz_rev,index=index_f[:-1])
+frame_rev = pd.DataFrame(matriz_rev,index=index_f)
 
 #generar matriz de folios con atraso +5 y +7
 mas5 = {}
@@ -1044,3 +1071,42 @@ for usuario in MDF:
 #va comentada para no enviarlos en automático!
 # mensajes(d_salida)
         
+
+
+#continuar ocn generacion de matriz para regresion lineal
+
+# dregresion = pd.DataFrame(regresion)
+# dregresion = dregresion.groupby(['modulo','entidad']).max()
+# serie_comp = desempe['promedio_carga_trabajo_por_dia']
+# serie_comp = serie_comp.set_axis(desempe['usuario'])
+# addd = [serie_comp[user] for user in dregresion['revisor']]
+# dregresion['carga_trabajo_promedio'] = addd
+# #guardar el frame sin codificar para tomar en cuenta los datos de entrada
+# dregresion.to_csv('regresion_ini.csv',encoding='latin1')
+# dregresion = pd.DataFrame(dregresion)
+
+# def codificar(df,col,l_var):
+#     "transforar el frame con la columna codificada/l_var es letra de variable para identificarla"
+#     dimension = len(list(df[col].unique()))
+#     equivalencias = {}
+#     #generar matrix
+#     for i,val in enumerate(df[col].unique()):
+#         equivalencias[val] = [0 for n in range(dimension-1)]
+#         if i == 0:
+#             continue
+#         equivalencias[val][i-1] = 1
+#     print(equivalencias)
+# # import matplotlib.pyplot as plt
+
+# codificar(dregresion,'revisor','x')
+# filtro = desempe.loc[desempe['cuestionarios_revisados']>0]
+# del filtro['retrasos_con_asignacion_fuera_hlab_fol']
+# # filtro = filtro.loc[filtro['equipo']=='Integración de Información']
+# filtro = filtro.reset_index(drop=True)
+
+# for var in filtro.iloc[:,3:]:
+#     fig, ax = plt.subplots()
+#     ax.scatter(filtro['cuestionarios_revisados'],filtro[var])
+#     ax.set_title(var)
+#     fig.show()
+    
