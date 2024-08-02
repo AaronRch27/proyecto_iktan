@@ -27,6 +27,7 @@ equipos_nom = {
       'KARLA FABIOLA ACEVEDO BERNARDINO',
       # 'ANTONIO ROMERO LEYVA',
       'YOLISMA IVETTE LOPEZ CERON',
+      'URIEL EDUARDO CAMPUZANO HERNANDEZ',
       # 'DIANA LETICIA ALCALA GONZALEZ',
       'EDWIN HECTOR PINEDA LOPEZ']
     }
@@ -34,8 +35,9 @@ siglas = {'Operación Estratégica':'DOE',
           'Integración de Información': 'DII',
           'Control y Logística':'DCL'
           }
-def gen_presentacion():
+def gen_presentacion(fecha):
     """
+    fecha : str String con la fecha de la base de datos
     Al ser llamada, la función busca en la carpeta de utilidades todos
     los archivos para ordenarlos y pegarlos en una presentación con
     el desempeño de los responsables revisores. 
@@ -56,7 +58,10 @@ def gen_presentacion():
                    foto = q.shapes.add_picture(f'Utilidades_app\{miembro}.png',
                                                Inches(0.1),
                                                Inches(0.1))
-    prs.save('informe_responsables_revisores.pptx')
+    fecha = fecha.replace('/','-')
+    fecha = fecha.replace(' ','-')
+    fecha = fecha.replace(':','-')
+    prs.save(f'informe_responsables_revisores_{fecha}.pptx')
 
 def borrar_imagenes():
     for equipo in equipos_nom:

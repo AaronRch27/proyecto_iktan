@@ -107,7 +107,12 @@ def procesar(documento):
     #crear variable con dias no laborales de inegi año,mes,dia
     feriados = ['2023-02-06', '2023-03-20','2023-04-06','2023-04-07',
                 '2023-05-01', '2023-05-05', '2023-07-08', '2023-09-16',
-                '2023-11-02', '2023-11-20', '2023-12-25']
+                '2023-11-02', '2023-11-20', '2023-12-25',
+                #se agrgean de 2024 por continuidad
+                '2024-01-01','2024-02-05','2024-03-18',
+                '2024-03-28','2024-03-29','2024-05-01',
+                '2024-05-05','2024-07-08','2024-09-16','2024-10-01',
+                '2024-11-02','2024-11-18','2024-12-25']
     
     
     df.insert(1,'Proyecto',[proyectos[x[-4]] if len(x)<8 else 'vacio' for x in df['Folio']],allow_duplicates=False)
@@ -160,13 +165,13 @@ def procesar(documento):
     df.insert(5,'Dias_inicio_RevOC',d_OC,allow_duplicates=False)#tener numero negativo quiere decir que ya se pasó la fecha y son los días de retraso
     df.insert(6,'Dias_fin_Recfirma',d_firma,allow_duplicates=False)#tener numero negativo quiere decir que ya se pasó la fecha y son los días de retraso
     #comienzo del tratamiento a los datos del df
-    valores = [f'Aclaración de información (Revisión ROCE) ({x})' for x in range(1,10)]
+    valores = [f'Revisión ROCE ({x})' for x in range(1,10)]
     ndf1 = df[df.Estatus.isin(valores)] #nuevo frame filtrado con la variable de interes Estatus
     ndf = ndf1.copy()
     # ndf['num_rev'] = ndf.apply(lambda fila: fila.Estatus[-2],axis=1)
     ndf['contador'] = [1 for i in range(ndf.shape[0])]    
     mas_solicitudes = ndf.groupby(by=['Folio']).sum()
-    filtro = mas_solicitudes['contador'] > 3
+    filtro = mas_solicitudes['contador'] > 0
     ms = mas_solicitudes[filtro]
     indexms = list(ms.index)
     ncon = list(ms['contador'])

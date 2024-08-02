@@ -10,13 +10,14 @@ from datetime import datetime, timedelta
 import numpy as np
 from gen_graf import generar_imagenes
 from mensajes import mensajes
+from apartado_roces import ROCES
 
 
 hoy =  datetime.now()
 
 #leer archivo descargado de iktan
 
-documento = pd.read_excel('xIktan_20231003030410237_reporteSegumiento.xlsx')
+documento = pd.read_excel('xIktan_20240214090809212_reporteSegumiento.xlsx')
 
 #formar nuevo dataframe
 rep = documento.fillna('vacio') #llenar espacios vacios con la palabra 'vacio'
@@ -144,7 +145,12 @@ f_corte = {#cada llave tiene una lista con dos valores, el primero es la fecha d
     }
 feriados = ['2023-02-06', '2023-03-20','2023-04-06','2023-04-07',
             '2023-05-01', '2023-05-05', '2023-07-08', '2023-09-16',
-            '2023-11-02', '2023-11-20', '2023-12-25']
+            '2023-11-02', '2023-11-20', '2023-12-25',
+            #se agrgean de 2024 por continuidad
+            '2024-01-01','2024-02-05','2024-03-18',
+            '2024-03-28','2024-03-29','2024-05-01',
+            '2024-05-05','2024-07-08','2024-09-16','2024-10-01',
+            '2024-11-02','2024-11-18','2024-12-25']
 d_OC = []
 d_firma = []
 c = 0
@@ -170,13 +176,13 @@ for registro in df['Registro']:
 df.insert(5,'Dias_inicio_RevOC',d_OC,allow_duplicates=False)#tener numero negativo quiere decir que ya se pasó la fecha y son los días de retraso
 df.insert(6,'Dias_fin_Recfirma',d_firma,allow_duplicates=False)#tener numero negativo quiere decir que ya se pasó la fecha y son los días de retraso
 #comienzo del tratamiento a los datos del df
-valores = [f'Aclaración de información (Revisión ROCE) ({x})' for x in range(1,10)]
+valores = [f'Revisión ROCE ({x})' for x in range(1,10)]
 ndf1 = df[df.Estatus.isin(valores)] #nuevo frame filtrado con la variable de interes Estatus
 ndf = ndf1.copy()
 # ndf['num_rev'] = ndf.apply(lambda fila: fila.Estatus[-2],axis=1)
 ndf['contador'] = [1 for i in range(ndf.shape[0])]    
 mas_solicitudes = ndf.groupby(by=['Folio']).sum()
-filtro = mas_solicitudes['contador'] > 3
+filtro = mas_solicitudes['contador'] > 0
 ms = mas_solicitudes[filtro]
 indexms = list(ms.index)
 ncon = list(ms['contador'])
@@ -500,16 +506,15 @@ for censo in censos:
     OCCC = 0 #suma de revisiones
     lib = 0 #suma de cuestionarios revisados
     nop = 0 #no aplica
-    if censo == 'CNGE':
-        revisiss={'Entidad':[],'Modulo':[],'folio':[]}
+    # if censo == 'CNGE':
+    #     revisiss={'Entidad':[],'Modulo':[],'folio':[]}
     for filtro in filtros:
         bb1 = bb.loc[bb['Folio']==filtro]
-        sta = list(bb1['Estatus'])
         suma = False
         suma1 = False
         suma2 = False
         suma3 = False
-        for es in sta:
+        for es in bb1['Estatus']:
             if 'No aplica' in es:
                 suma3 = True
             if 'Revisión OC' in es:
@@ -526,10 +531,10 @@ for censo in censos:
         if suma2:
             lib += 1
         if suma3:
-            if censo=='CNGE':
-                revisiss['Entidad'].append(list(bb1['Entidad'])[0])
-                revisiss['Modulo'].append(list(bb1['Módulo'])[0])
-                revisiss['folio'].append(filtro)
+            # if censo=='CNGE':
+            #     revisiss['Entidad'].append(list(bb1['Entidad'])[0])
+            #     revisiss['Modulo'].append(list(bb1['Módulo'])[0])
+            #     revisiss['folio'].append(filtro)
             nop += 1
     avan.append(r)
     revi.append(OCCC)
@@ -550,7 +555,81 @@ for val in list(cen_can.values()):
     c += 1
 avance = pd.DataFrame(avance)
 
-#Desempeño de los revisores
+
+
+###avance por estados
+avance_est = {'Entidad':[],
+             'Equipo':[],
+             'Programa':[],
+             'Cuestionarios':[],
+             'Avance_recuperados_conFyS':[],
+             'Cuestionarios_NoAplica':[],
+             'Porcentaje_de_conclusion(recup_firmaysello_y_NoAplica)':[]
+    }
+
+entidades =  list(df['Entidad'].unique())
+
+censos = list(df['Proyecto'].unique())
+if 'vacio' in censos:
+    censos.remove('vacio')
+if 'vacio' in entidades:
+    entidades.remove('vacio')
+
+for entidad in entidades:
+    base_edo = df.loc[df['Entidad']==entidad]
+
+    for censo in censos:
+        bb = base_edo.loc[base_edo['Proyecto']==censo]
+        cantidad = len(list(bb['Folio'].unique()))
+        cen_can[censo] = cantidad
+        #otro proceso dentro de esta iteracion
+        # bb = df.loc[df['Proyecto']==censo]
+        filtros = list(bb['Folio'].unique())
+        r = 0 #suma de recuperados con firma y sello--concluidos
+        nop = 0 #no aplica
+        # if censo == 'CNGE':
+        #     revisiss={'Entidad':[],'Modulo':[],'folio':[]}
+        for filtro in filtros:
+            bb1 = bb.loc[bb['Folio']==filtro]
+            suma = False
+            suma1 = False
+            suma2 = False
+            suma3 = False
+            for es in bb1['Estatus']:
+                if 'No aplica' in es:
+                    suma3 = True
+                if 'Revisión OC' in es:
+                    suma1 = True
+                if 'En proceso de firma y sello (1)' in es:
+                    suma2 = True
+                if 'Recuperado con firma y sello (1)' in es:
+                    suma = True
+                    
+            if suma and not suma3:
+                r += 1
+            if suma3:
+                nop += 1
+                
+        avance_est['Avance_recuperados_conFyS'].append(r)
+        avance_est['Programa'].append(censo)
+        avance_est['Cuestionarios_NoAplica'].append(nop)
+
+        avance_est['Entidad'].append(entidad)
+        avance_est['Equipo'].append(equipos[censo])
+        avance_est['Cuestionarios'].append(cantidad)
+        avance_est['Porcentaje_de_conclusion(recup_firmaysello_y_NoAplica)'].append(f'{round((r+nop)*100/cantidad)}%' if cantidad > 0 else '0%')
+    
+avance_est = pd.DataFrame(avance_est)
+
+
+
+#Desempeño de revisores estatales
+
+desmp_estatales = ROCES(df)
+
+
+
+#Desempeño de los revisores OC
 revs = [f'Aclaración de información OC ({x})' for x in range(1,15)]
 fff = ['En proceso de firma y sello (1)'] #solo este porque los demas ya corresponden aveces a otro miembro de los revisores, generalmente del equipo de Alexei
 nw1 = df[df.Estatus.isin(revs+fff)]
@@ -1011,62 +1090,63 @@ with pd.ExcelWriter('matriz_resumen_pow.xlsx') as writer:
     MR.to_excel(writer, sheet_name='matriz_resumen',index=False)
     desem_jefes.to_excel(writer, sheet_name= 'desem_jefes',index=False)
     avance.to_excel(writer, sheet_name='avance',index=False)
+    avance_est.to_excel(writer, sheet_name='avance_estados',index=False)
     
 #crear salida para enviar mensajes
-d_salida = {}
-for usuario in MDF:
-    #conseguir los folios del usuario cargas de trabajo
-    historico_folios = list(MDF[usuario])
-    #solo seleccionar los folios de día previo de descarga de la base
-    interes =  historico_folios[-1]#el útlimo día es es de la fecha de descarga de la base
-    d_salida[usuario] = {}
-    for folio in interes:
-        if folio not in foly_retr[usuario]:#se trata de folios recien asignados
-            continue
-        # if foly_retr[usuario][folio] == 4:
-        #     inf_folio = df.loc[df['Folio']==folio[:-4]]
-        #     inf_folio = inf_folio.reset_index(drop=True)
-        #     censo = list(inf_folio['Proyecto'])[0]
-        #     modulo = list(inf_folio['Módulo'])[0]
-        #     entidad = list(inf_folio['Entidad'])[0]
-        #     texto = f'{censo} {entidad} {modulo}'
-        #     if 4 in d_salida[usuario]:
-        #         d_salida[usuario][4].append(texto)
-        #     else:
-        #         d_salida[usuario][4] = [texto]
-        if foly_retr[usuario][folio] == 5:
-            inf_folio = df.loc[df['Folio']==folio[:-4]]
-            inf_folio = inf_folio.reset_index(drop=True)
-            censo = list(inf_folio['Proyecto'])[0]
-            modulo = list(inf_folio['Módulo'])[0]
-            entidad = list(inf_folio['Entidad'])[0]
-            texto = f'{censo} {entidad} {modulo}'
-            if 5 in d_salida[usuario]:
-                d_salida[usuario][5].append(texto)
-            else:
-                d_salida[usuario][5] = [texto]
-        if foly_retr[usuario][folio] > 5 and foly_retr[usuario][folio] < 8:
-            inf_folio = df.loc[df['Folio']==folio[:-4]]
-            inf_folio = inf_folio.reset_index(drop=True)
-            censo = list(inf_folio['Proyecto'])[0]
-            modulo = list(inf_folio['Módulo'])[0]
-            entidad = list(inf_folio['Entidad'])[0]
-            texto = f'{censo} {entidad} {modulo}'
-            if 6 in d_salida[usuario]:
-                d_salida[usuario][6].append(texto)
-            else:
-                d_salida[usuario][6] = [texto]
-        if foly_retr[usuario][folio] > 7:
-            inf_folio = df.loc[df['Folio']==folio[:-4]]
-            inf_folio = inf_folio.reset_index(drop=True)
-            censo = list(inf_folio['Proyecto'])[0]
-            modulo = list(inf_folio['Módulo'])[0]
-            entidad = list(inf_folio['Entidad'])[0]
-            texto = f'{censo} {entidad} {modulo}'
-            if 7 in d_salida[usuario]:
-                d_salida[usuario][7].append(texto)
-            else:
-                d_salida[usuario][7] = [texto]
+# d_salida = {}
+# for usuario in MDF:
+#     #conseguir los folios del usuario cargas de trabajo
+#     historico_folios = list(MDF[usuario])
+#     #solo seleccionar los folios de día previo de descarga de la base
+#     interes =  historico_folios[-1]#el útlimo día es es de la fecha de descarga de la base
+#     d_salida[usuario] = {}
+#     for folio in interes:
+#         if folio not in foly_retr[usuario]:#se trata de folios recien asignados
+#             continue
+#         # if foly_retr[usuario][folio] == 4:
+#         #     inf_folio = df.loc[df['Folio']==folio[:-4]]
+#         #     inf_folio = inf_folio.reset_index(drop=True)
+#         #     censo = list(inf_folio['Proyecto'])[0]
+#         #     modulo = list(inf_folio['Módulo'])[0]
+#         #     entidad = list(inf_folio['Entidad'])[0]
+#         #     texto = f'{censo} {entidad} {modulo}'
+#         #     if 4 in d_salida[usuario]:
+#         #         d_salida[usuario][4].append(texto)
+#         #     else:
+#         #         d_salida[usuario][4] = [texto]
+#         if foly_retr[usuario][folio] == 5:
+#             inf_folio = df.loc[df['Folio']==folio[:-4]]
+#             inf_folio = inf_folio.reset_index(drop=True)
+#             censo = list(inf_folio['Proyecto'])[0]
+#             modulo = list(inf_folio['Módulo'])[0]
+#             entidad = list(inf_folio['Entidad'])[0]
+#             texto = f'{censo} {entidad} {modulo}'
+#             if 5 in d_salida[usuario]:
+#                 d_salida[usuario][5].append(texto)
+#             else:
+#                 d_salida[usuario][5] = [texto]
+#         if foly_retr[usuario][folio] > 5 and foly_retr[usuario][folio] < 8:
+#             inf_folio = df.loc[df['Folio']==folio[:-4]]
+#             inf_folio = inf_folio.reset_index(drop=True)
+#             censo = list(inf_folio['Proyecto'])[0]
+#             modulo = list(inf_folio['Módulo'])[0]
+#             entidad = list(inf_folio['Entidad'])[0]
+#             texto = f'{censo} {entidad} {modulo}'
+#             if 6 in d_salida[usuario]:
+#                 d_salida[usuario][6].append(texto)
+#             else:
+#                 d_salida[usuario][6] = [texto]
+#         if foly_retr[usuario][folio] > 7:
+#             inf_folio = df.loc[df['Folio']==folio[:-4]]
+#             inf_folio = inf_folio.reset_index(drop=True)
+#             censo = list(inf_folio['Proyecto'])[0]
+#             modulo = list(inf_folio['Módulo'])[0]
+#             entidad = list(inf_folio['Entidad'])[0]
+#             texto = f'{censo} {entidad} {modulo}'
+#             if 7 in d_salida[usuario]:
+#                 d_salida[usuario][7].append(texto)
+#             else:
+#                 d_salida[usuario][7] = [texto]
                 
 #va comentada para no enviarlos en automático!
 # mensajes(d_salida)
@@ -1074,39 +1154,191 @@ for usuario in MDF:
 
 
 #continuar ocn generacion de matriz para regresion lineal
+import matplotlib.pyplot as plt
 
-# dregresion = pd.DataFrame(regresion)
-# dregresion = dregresion.groupby(['modulo','entidad']).max()
-# serie_comp = desempe['promedio_carga_trabajo_por_dia']
-# serie_comp = serie_comp.set_axis(desempe['usuario'])
-# addd = [serie_comp[user] for user in dregresion['revisor']]
-# dregresion['carga_trabajo_promedio'] = addd
-# #guardar el frame sin codificar para tomar en cuenta los datos de entrada
-# dregresion.to_csv('regresion_ini.csv',encoding='latin1')
-# dregresion = pd.DataFrame(dregresion)
-
-# def codificar(df,col,l_var):
-#     "transforar el frame con la columna codificada/l_var es letra de variable para identificarla"
-#     dimension = len(list(df[col].unique()))
-#     equivalencias = {}
-#     #generar matrix
-#     for i,val in enumerate(df[col].unique()):
-#         equivalencias[val] = [0 for n in range(dimension-1)]
-#         if i == 0:
-#             continue
-#         equivalencias[val][i-1] = 1
-#     print(equivalencias)
-# # import matplotlib.pyplot as plt
 
 # codificar(dregresion,'revisor','x')
-# filtro = desempe.loc[desempe['cuestionarios_revisados']>0]
-# del filtro['retrasos_con_asignacion_fuera_hlab_fol']
-# # filtro = filtro.loc[filtro['equipo']=='Integración de Información']
-# filtro = filtro.reset_index(drop=True)
+filtro = desempe.loc[desempe['cuestionarios_revisados']>0]
+del filtro['retrasos_con_asignacion_fuera_hlab_fol']
+# filtro = filtro.loc[filtro['equipo']=='Integración de Información']
+filtro = filtro.reset_index(drop=True)
 
 # for var in filtro.iloc[:,3:]:
 #     fig, ax = plt.subplots()
 #     ax.scatter(filtro['cuestionarios_revisados'],filtro[var])
 #     ax.set_title(var)
 #     fig.show()
+
+from sklearn import linear_model, preprocessing
+
+X = filtro[['promedio_dias_revision', 'maximo_carga_por_dia']]
+y = filtro['revisiones_con_mas_5_dias'].values
+
+
+
+regr = linear_model.LinearRegression()
+regr.fit(X, y)
+
+# predicted = regr.predict([[2.29, 6]])#2.29 es el promedio de todos los revisores, y 6 es el número ideal para no esperar retrasos
+
+print('regresion lineal',regr.score(X,y))
+
+#ver las lineas del modelo por revisor--no necesario
+# eje_x = [io for io in range(1,15)]
+# for i,usuario in enumerate(filtro['usuario']):
+#     eje_y = [regr.predict([[filtro['promedio_dias_revision'][i],ip]])[0] for ip in eje_x]
+#     fig, ax = plt.subplots()
+#     ax.plot(eje_x, eje_y)
+#     ax.set_title(usuario)
+#     plt.grid()
+#     plt.show()
+
+#generar dict con sus límites teóricos
+lim_teo = {}
+for i,usuario in enumerate(filtro['usuario']):
+    dias = 0
+    while True:
+        predic = regr.predict([[filtro['promedio_dias_revision'][i], dias]])[0]
+        if predic > 0:
+            break
+        else:
+            dias += 1 
+    lim_teo[usuario] = dias-1
     
+agregar = []
+for usuario in filtro['usuario']:
+    agregar.append(lim_teo[usuario])
+
+filtro['lim_teo'] = agregar
+
+#generar modelo de estimacion para dias en revision
+#consguir filtro de solo las primeras revisiones y sus dias en revision
+import json
+f = open('matriz_ev_cuest.json')
+evalu = json.load(f) 
+ev = {}
+for cuestionario in evalu:
+    if evalu[cuestionario] < 220:
+        ev[cuestionario] = 1
+    elif evalu[cuestionario] > 220 and evalu[cuestionario] < 440:
+        ev[cuestionario] = 2
+    elif evalu[cuestionario] > 440 and evalu[cuestionario] < 660:
+        ev[cuestionario] = 3
+    elif evalu[cuestionario] > 660 and evalu[cuestionario] < 880:
+        ev[cuestionario] = 4
+    elif evalu[cuestionario] > 880 and evalu[cuestionario] < 1000:
+        ev[cuestionario] = 5
+    elif evalu[cuestionario] > 1000:
+        ev[cuestionario] = 6
+
+
+reg_bas = {'modulo':[],
+           'revisor':[],
+           # 'carga':[],
+           'entidad':[],
+           'num_revision':[],
+           'carga_prom_al_dia':[],
+           'dias':[]}
+# excluir = ['MARIANA RIOS MARTINEZ','ALEXEI PRADEL HERNANDEZ','VICTOR RAMIRO ESPINA CASAS']
+for revisor in foly_retr:
+    # if revisor not in excluir:
+    for revisiones in foly_retr[revisor]:
+        
+        # if revisiones.endswith('(1)'):
+        al = revisiones.split('(')
+        reg_bas['num_revision'].append(int(al[1][:-1]))
+        reg_bas['revisor'].append(filtro['lim_teo'][filtro.index[filtro['usuario']==revisor][0]])
+        reg_bas['dias'].append(foly_retr[revisor][revisiones])  
+        reg_bas['modulo'].append(ev[revisiones[2:6]])
+        reg_bas['entidad'].append(int(revisiones[:2]))
+        #calcular promedio de carga al dia de revisor en revision
+        prom = []
+        for dia in MDF[revisor]:
+            if revisiones in dia:
+                prom.append(len(dia))
+        # reg_bas['carga'].append(filtro['maximo_carga_por_dia'][filtro.index[filtro['usuario']==revisor][0]])
+        reg_bas['carga_prom_al_dia'].append(sum(prom)/len(prom))
+
+
+regrn = pd.DataFrame(reg_bas) 
+      
+
+X1 = regrn[['modulo','entidad','revisor','num_revision','carga_prom_al_dia']]
+
+
+y1 = regrn['dias'].values
+
+
+from sklearn import tree
+clf = tree.DecisionTreeClassifier()
+clf = clf.fit(X1, y1)
+print(clf.score(X1,y1))
+
+
+
+
+
+
+#hacer modelo para cantidad de revisiones
+compl = pd.read_csv('complejidad_por_folio.csv')
+compl['folio'] = compl['folio'].astype('string')
+nuevo_folio = [c if len(c)==6 else '0'+c for c in compl['folio']]
+compl['folio'] = nuevo_folio
+nbase = {'folio':[],
+          'revisor':[],
+          'dificultad':[],
+          'entidad':[],
+          'equipo':[],
+          # 'carga_prom':[],
+          'revisiones_roce':[],
+          'complejidad_respuestas':[],
+          'revisiones_totales':[]}
+
+equipos_nom11 = { 
+    'Operación Estratégica': 1,
+    'Integración de Información': 3,
+    'Control y Logística': 2
+    }
+
+for revisor in foly_retr:
+    revisiones = [x[:6] for x in foly_retr[revisor]]
+    cuestionarios = list(set(revisiones))
+    for cuestionario in cuestionarios:
+        n_r = 0
+        c_r = 0
+        for revision in revisiones:
+            if revision == cuestionario:
+                n_r += 1
+                c_r += len(revisiones)
+        nbase['folio'].append(cuestionario)
+        #nbase['revisor'].append(filtro['lim_teo'][filtro.index[filtro['usuario']==revisor][0]])
+        nbase['revisor'].append(filtro.index[filtro['usuario']==revisor][0])
+        nbase['dificultad'].append(ev[cuestionario[2:]])
+        nbase['entidad'].append(int(cuestionario[:2]))
+        nbase['equipo'].append(equipos_nom11[filtro['equipo'][filtro.index[filtro['usuario']==revisor][0]]])
+        nbase['revisiones_totales'].append(n_r)
+        nbase['revisiones_roce'].append(rt['Numero_consultas'][rt.index[rt['Folio']==cuestionario][0]])
+        # nbase['carga_prom'].append(c_r/n_r)
+        try:
+            nbase['complejidad_respuestas'].append(compl['compl'][compl.index[compl['folio']==cuestionario][0]])
+        except:
+            nbase['complejidad_respuestas'].append(50)#estos no tienen ficha se les da 50 porque es es valor mayor al valir máximo que es 46 como un tipo 99 de no identificado
+            # print(cuestionario)
+n_revis = pd.DataFrame(nbase)
+
+# n_revis = n_revis.loc[n_revis['equipo']==1]
+
+X2 = n_revis[['dificultad','entidad','revisor','revisiones_roce','complejidad_respuestas']]
+
+y2 = n_revis['revisiones_totales'].values
+
+clf1 = tree.DecisionTreeClassifier()
+clf1 = clf1.fit(X2, y2)
+print(clf1.score(X2,y2))
+
+
+# with pd.ExcelWriter('modelos2024_p.xlsx') as writer:  
+#     filtro.to_excel(writer, sheet_name='desemp',index=False)
+#     regrn.to_excel(writer, sheet_name='modelo_dias',index=False)
+#     n_revis.to_excel(writer, sheet_name='modelo_revisiones',index=False)
+#     MDF.to_excel(writer, sheet_name='orden_llegado',index=False)
